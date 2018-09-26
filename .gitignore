@@ -1,0 +1,6 @@
+#openFrameworks
+main/*.make
+main/Makefile
+main/openFrameworks-Info.plist
+main/openFrameworks.xcodeproj
+main/Project.xcconfig
