@@ -25,6 +25,8 @@ CNCServer cnc;
 boolean bPlotterIsZeroed;
 boolean bFollowingMouse;
 
+float moveX, moveY;
+boolean moveUp = false;
 //=======================================
 
 void setup() {
@@ -71,8 +73,26 @@ void keyPressed() {
     bFollowingMouse = !bFollowingMouse;
     println("bFollowingMouse = " + bFollowingMouse);
   }
+  
+  if (key == CODED) {
+    if (keyCode == UP) {
+      moveY = min(max(0, moveY+1),100);
+    }
+    if (keyCode == DOWN) {
+      moveY = min(max(0, moveY-1),100);
+    }
+    if (keyCode == RIGHT) {
+       moveX = min(max(0, moveX-1),100);
+    }
+    if (keyCode == LEFT) {
+       moveX = min(max(0, moveX+1),100);
+    }
+  }
+  if(key == ' '){
+    moveUp = !moveUp;
+  }
 }
-
+//=======================================
 void mousePressed(){
   isMousePressed = true;
   _mouse.x = mouseX;
@@ -109,16 +129,26 @@ void drawPlotter(){
     background(255, 255, 255); 
     if (bFollowingMouse) {
       float mx = constrain(mouseX/10.0, 0, 100);
-      float my = constrain(mouseY/10.0, 0, 100); 
+      float my = constrain(mouseY/10.0, 0, 100);
+      
+      //debug---
+      mx = moveX;
+      my = moveY;
+      
       cnc.moveTo(mx, my);
       
-      
-      
+      if(moveUp){
+        cnc.penUp();
+      }else{
+        cnc.penDown();
+      }
+      /*
       if (mousePressed) {
         cnc.penDown();
       } else {
         cnc.penUp();
       }
+      */
     } else {
       fill(0, 0, 0);
       text ("Enable drawing to move plotter.", 20, 20);
@@ -150,7 +180,7 @@ void setupSandCamera() {
       println("Available cameras:");
       printArray(cameras);
   
-      cam = new Capture(this, 480, 361, cameras[0]);
+      cam = new Capture(this, 480, 361, cameras[15]);
       cam.start();
     }
     
@@ -184,7 +214,7 @@ void drawSandCamera() {
     sandCam = cam.get(x,y,w,h);
     sandCam.resize(peopleCam.width, peopleCam.height);
     sandCam.filter(GRAY);
-    sandCam.filter(POSTERIZE, 2);
+    sandCam.filter(POSTERIZE, 3);
     image(sandCam, 0, 0, sandCam.width, sandCam.height);
     
   }
@@ -197,10 +227,10 @@ void drawSandCamera() {
   peopleCamera
 ********************************************/
 void setupPeopleCamera(){
-  peopleCam = loadImage("IMG_5538.JPG"); //real-time web camera
+  peopleCam = loadImage("circle.png"); //real-time web camera
   peopleCam.loadPixels();
 
-  drawImage = loadImage("IMG_5538.JPG");
+  drawImage = loadImage("circle.png");
   drawImage.loadPixels();
 
 }
@@ -218,7 +248,7 @@ void drawPeopleCamera(){
   int w = floor(img.width*resize_value);
   int h = floor(img.height*resize_value);
   img.filter(GRAY);
-  img.filter(POSTERIZE,2);
+  img.filter(POSTERIZE,3);
   
   
   image(img, peopleCam.width, 0);
