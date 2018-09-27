@@ -4,6 +4,8 @@ main/Makefile
 main/openFrameworks-Info.plist
 main/openFrameworks.xcodeproj
 main/Project.xcconfig
+main/bin/mainDebug.app/
+main/main.xcodeproj/
 
 #Processing
 /AxiDraw_Mouse/cncserver
