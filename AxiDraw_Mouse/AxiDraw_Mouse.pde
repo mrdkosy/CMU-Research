@@ -27,6 +27,7 @@ boolean bFollowingMouse;
 
 float moveX, moveY;
 boolean moveUp = false;
+float uplevel = 0;
 //=======================================
 
 void setup() {
@@ -91,6 +92,14 @@ void keyPressed() {
   if(key == ' '){
     moveUp = !moveUp;
   }
+  if(key == 'h'){
+    uplevel = min(max(0, uplevel+0.1), 1);
+    println(uplevel);
+  }
+  if(key == 'y'){
+    uplevel = min(max(0, uplevel-0.1), 1);
+    println(uplevel);
+  }
 }
 //=======================================
 void mousePressed(){
@@ -100,7 +109,7 @@ void mousePressed(){
 }
 //=======================================
 void exit() {
-  cnc.penUp();
+  cnc.penUp(0);
   cnc.unlock();
   println("Goodbye!");
   super.exit();
@@ -121,7 +130,7 @@ void setupPlotter(){
   bFollowingMouse = false;
   cnc = new CNCServer("http://localhost:4242");
   cnc.unlock();
-  cnc.penUp();
+  cnc.penUp(0);
   println("Plotter is at home? Press 'u' to unlock, 'z' to zero, 'd' to draw");
 }
 void drawPlotter(){
@@ -138,7 +147,7 @@ void drawPlotter(){
       cnc.moveTo(mx, my);
       
       if(moveUp){
-        cnc.penUp();
+        cnc.penUp(uplevel);
       }else{
         cnc.penDown();
       }
@@ -192,8 +201,10 @@ void drawSandCamera() {
     cam.read();
   }
   
+  imageMode(CENTER);  
   pushMatrix();
-  translate(0, peopleCam.height);
+  translate(peopleCam.width/2, peopleCam.height/2*3);
+  
   
   if(vectorIndex < 3){
     if(isMousePressed){
@@ -207,6 +218,8 @@ void drawSandCamera() {
     
   }
   else{
+    
+    rotate(PI);
     int x = floor(trimmingPoint[0].x);
     int y = floor(trimmingPoint[0].y);
     int w = abs(floor(trimmingPoint[1].x - trimmingPoint[0].x));
@@ -220,7 +233,14 @@ void drawSandCamera() {
   }
   
   popMatrix();
-
+  
+  pushMatrix();
+  translate(peopleCam.width/2*3, peopleCam.height/2*3);
+  rotate(PI);
+  image(cam, 0, 0, 480, 361);
+  popMatrix();
+  
+  imageMode(CORNER);
 }
   
 /********************************************
