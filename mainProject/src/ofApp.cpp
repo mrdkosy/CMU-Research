@@ -33,6 +33,7 @@ void ofApp::draw(){
     msg.addIntArg(0);
     osc.sendMessage(msg);
     
+    //test
     
     
 }
