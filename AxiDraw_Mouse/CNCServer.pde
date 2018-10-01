@@ -25,13 +25,12 @@ class CNCServer {
 
   void penDown(){
    JSONObject comJSON = new JSONObject();
-   comJSON.put("state", 1);// fully down is 1
+   comJSON.put("state", .75);// fully down is 1
    sendPut(penURL, comJSON);
   }
-  void penUp(float level){
+  void penUp(){
    JSONObject comJSON = new JSONObject();
-   level = min(1, max(level, 0));
-   comJSON.put("state", level);
+   comJSON.put("state", 0);
    sendPut(penURL, comJSON);
   }
   
