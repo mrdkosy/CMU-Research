@@ -194,7 +194,8 @@ void PlotterController::plotterPositionCalcurator(){
         cout << "change goal point to -> ";
         cout << position << endl;
         cout << "the time it takes to move to goal -> ";
-        cout << movingTime << endl;
+        cout << movingTime;
+        cout << " seconds" << endl;
 #endif
     }
 
@@ -214,7 +215,7 @@ void PlotterController::plotterPositionCalcurator(){
 }
 //--------------------------------------------------------------
 ofVec2f PlotterController::getPosition(){
-    return position;
+    return (position/ofVec2f(WIDTH,HEIGHT));
 }
 //--------------------------------------------------------------
 void PlotterController::sandSimulationInit(){

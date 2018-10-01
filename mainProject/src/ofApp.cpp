@@ -6,7 +6,7 @@ void ofApp::setup(){
     ofSetFrameRate(60);
     
     //osc
-    osc.setup("localhost", 12345);
+    osc.setup("128.237.170.35", 12345);
     
     //plotter controller
     controller.init();
@@ -29,16 +29,21 @@ void ofApp::draw(){
     controller.draw();
     
     //osc
-    ofxOscMessage msg;
-    int x = controller.getPosition().x;
-    int y = controller.getPosition().y;
-    msg.setAddress("/positionX");
-    msg.addIntArg(x);
-    msg.setAddress("/positionY");
-    msg.addIntArg(y);
-    osc.sendMessage(msg);
+    ofVec2f p = controller.getPosition();
+    if(p != position){
+        
+        ofxOscMessage msg;
+        msg.setAddress("/plotter/position/");
+        msg.addFloatArg(p.x);
+        msg.addFloatArg(p.y);
+        osc.sendMessage(msg);
+        position = p;
+#ifdef DEBUG
+        cout << "OSC send : ";
+        cout << position << endl;
+#endif
+    }
     
-
     
     
 }
@@ -65,7 +70,12 @@ void ofApp::mouseDragged(int x, int y, int button){
 
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button){
-
+    ofxOscMessage msg;
+    msg.setAddress("/mouse/position/");
+    msg.addIntArg(x);
+    msg.addIntArg(y);
+    osc.sendMessage(msg);
+    cout << x << "," << y << endl;
 }
 
 //--------------------------------------------------------------

@@ -15,7 +15,7 @@
 
 #define DEBUG
 //#define REALTIME_CAPTURE_PEOPLE
-//#define REALTIME_CAPTURE_SAND
+#define REALTIME_CAPTURE_SAND
 #define WIDTH 640
 #define HEIGHT 480
 #define CELL_SIZE 10

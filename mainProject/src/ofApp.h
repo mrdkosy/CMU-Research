@@ -25,4 +25,6 @@ class ofApp : public ofBaseApp{
     
     ofxOscSender osc;
     PlotterController controller;
+    
+    ofVec2f position;
 };
