@@ -1,8 +1,8 @@
 #include "ofApp.h"
-
+#define DEBUG
 //--------------------------------------------------------------
 void ofApp::setup(){
-    ofSetBackgroundColor(150);
+    ofSetBackgroundColor(255);
     ofSetFrameRate(60);
     
     //osc
@@ -14,8 +14,9 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 void ofApp::update(){
-    if(ofGetFrameNum() % 60 == 0) cout << ofGetFrameRate() << endl;
-    
+#ifdef DEBUG
+    if(ofGetFrameNum() % 60 == 0) cout << "fps : " << ofGetFrameRate() << endl;
+#endif
     //plotter controller
     controller.update();
     
@@ -29,11 +30,15 @@ void ofApp::draw(){
     
     //osc
     ofxOscMessage msg;
-    msg.setAddress("/position");
-    msg.addIntArg(0);
+    int x = controller.getPosition().x;
+    int y = controller.getPosition().y;
+    msg.setAddress("/positionX");
+    msg.addIntArg(x);
+    msg.setAddress("/positionY");
+    msg.addIntArg(y);
     osc.sendMessage(msg);
     
-    //test
+
     
     
 }
