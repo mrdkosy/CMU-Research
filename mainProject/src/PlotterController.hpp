@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include "ofMain.h"
 #include "SandSimulation.hpp"
-
+#include "ofxOpenCv.h"
 
 #define DEBUG
 //#define REALTIME_CAPTURE_PEOPLE
@@ -46,6 +46,8 @@ private:
     void ResizeSandCamera();
     bool isResizeMode;
     vector<ofVec2f> resizePositions;
+    ofRectangle trimArea;
+    ofxCvColorImage trimmedImage;
     
     void sandSimulation();
     void sandSimulationInit();

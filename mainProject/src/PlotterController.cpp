@@ -51,13 +51,12 @@ void PlotterController::init(){
     //default aspect 4:3
     captureSand.setVerbose(true);
     captureSand.setDeviceID(0);
-    captureSand.initGrabber(1920, 1080);
+    captureSand.initGrabber(WIDTH, HEIGHT);
 #else
     sandSimulationInit();
 #endif
     sandFbo.allocate(WIDTH, HEIGHT);
     cvSandImageFbo.allocate(WIDTH, HEIGHT);
-    
     
 
 }
@@ -112,7 +111,14 @@ void PlotterController::draw(){
     sandFbo.begin();
     ofClear(255);
 #ifdef REALTIME_CAPTURE_SAND
-    captureSand.draw(0, 0);
+    //trimming process from sand video
+    if(resizePositions.size() == 2 && !isResizeMode){
+        trimmedImage.setFromPixels(captureSand.getPixels());
+        trimmedImage.setROI(trimArea);
+        trimmedImage.drawROI(0, 0, WIDTH, HEIGHT);
+    }else{
+      captureSand.draw(0, 0);
+    }
 #else
     sandSimulation();
 #endif
@@ -142,7 +148,7 @@ void PlotterController::draw(){
      cv
      *****************/
 
-    plotterPositionCalcurator();
+    if(!isResizeMode)plotterPositionCalcurator();
     
     
     
@@ -155,12 +161,25 @@ void PlotterController::draw(){
     
     
     
-    
     isMouseClicked = false;
 }
 //--------------------------------------------------------------
 void PlotterController::keyPressed(int key){
-    if(key == 'r') isResizeMode = !isResizeMode;
+    
+    
+    if(key == 'r'){
+        isResizeMode = !isResizeMode;
+        if(resizePositions.size() == 2){ // trim video
+            float w = abs(resizePositions[0].x - resizePositions[1].x);
+            float h = abs(resizePositions[0].y - resizePositions[1].y);
+            trimmedImage.allocate(w, h);
+
+#ifdef DEBUG
+            cout << "trimmed image size : ";
+            cout << w << " , " << h << endl;
+#endif
+        }
+    }
     if (key == 'c') resizePositions.clear();
 
 }
@@ -213,7 +232,6 @@ void PlotterController::plotterPositionCalcurator(){
     position.x += CELL_SIZE*direction;
     */
     
-    
     float t = (ofGetElapsedTimef() - triggerTime);
     if( (movingTime - t) <= 0){
         
@@ -229,8 +247,12 @@ void PlotterController::plotterPositionCalcurator(){
             _t = WIDTH;
         }else{
             position.y += CELL_SIZE;
-            if(position.y > HEIGHT) position.y = 0;
             _t = CELL_SIZE;
+            if(position.y > HEIGHT){
+                position.y = 0;
+                _t = HEIGHT;
+            }
+            
         }
         
         
@@ -301,27 +323,38 @@ void PlotterController::ResizeSandCamera(){
             float x = abs(p.x - pp.x);
             p.y = (x*3/4) + pp.y;
         }
-        if(resizePositions.size()<2) resizePositions.push_back(p);
+        if(resizePositions.size() < 2) resizePositions.push_back(p);
+        if(resizePositions.size() == 2){
+            trimArea.set(resizePositions[0].x, resizePositions[0].y,
+                         abs(resizePositions[0].x - resizePositions[1].x),
+                         abs(resizePositions[0].y - resizePositions[1].y));
+        }
     }
     
 
     ofSetColor(0, 0, 255, 255);
     for (int i=0; i<resizePositions.size(); i++) {
         ofDrawCircle(resizePositions[i].x, resizePositions[i].y, 5);
-        if(i > 0){
-            ofDrawLine(resizePositions[i-1].x, resizePositions[i-1].y, resizePositions[i].x,resizePositions[i-1].y);
-            ofDrawLine(resizePositions[i].x, resizePositions[i-1].y, resizePositions[i].x,resizePositions[i].y);
-        }
     }
-    
-    
+    if(resizePositions.size() == 2){
+        ofNoFill();
+        ofDrawRectangle(trimArea);
+        ofFill();
+    }
+
     
     ofPopStyle();
     ofPopMatrix();
 }
 //--------------------------------------------------------------
 ofVec2f PlotterController::getPosition(){
-    return (position/ofVec2f(WIDTH,HEIGHT));
+//    if(resizePositions.size() == 2 && !isResizeMode) return (position/ofVec2f(WIDTH,HEIGHT));
+//    else return ofVec2f(0,0);
+    if(resizePositions.size() == 2 && !isResizeMode){
+        return (position/ofVec2f(WIDTH,HEIGHT));
+    }else{
+        return ofVec2f(-1,-1);
+    }
 }
 //--------------------------------------------------------------
 void PlotterController::sandSimulationInit(){

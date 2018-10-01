@@ -23,6 +23,9 @@ class ofApp : public ofBaseApp{
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);
     
+    void sendOscMessage(ofVec2f p);
+    void sendOscMessage(float value);
+    
     ofxOscSender osc;
     PlotterController controller;
     

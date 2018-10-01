@@ -32,18 +32,9 @@ void ofApp::draw(){
     
     //osc
     ofVec2f p = controller.getPosition();
-    if(p != position){
-        
-        ofxOscMessage msg;
-        msg.setAddress("/plotter/position/");
-        msg.addFloatArg(p.x);
-        msg.addFloatArg(p.y);
-        osc.sendMessage(msg);
+    if(p != position && p.x >= 0 && p.y >= 0){
+        sendOscMessage(p);
         position = p;
-#ifdef DEBUG
-        cout << "OSC send : ";
-        cout << position << endl;
-#endif
     }
     
     
@@ -53,8 +44,32 @@ void ofApp::draw(){
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
     controller.keyPressed(key);
+    if(key == 'o'){
+        sendOscMessage(ofVec2f(0,0));
+    }
 }
-
+//--------------------------------------------------------------
+void ofApp::sendOscMessage(ofVec2f p){
+    ofxOscMessage msg;
+    msg.setAddress("/plotter/position/");
+    msg.addFloatArg(p.x);
+    msg.addFloatArg(p.y);
+    osc.sendMessage(msg);
+#ifdef DEBUG
+    cout << "OSC send : ";
+    cout << p << endl;
+#endif
+}
+void ofApp::sendOscMessage(float value){
+    ofxOscMessage msg;
+    msg.setAddress("/plotter/position/");
+    msg.addFloatArg(value);
+    osc.sendMessage(msg);
+#ifdef DEBUG
+    cout << "OSC send : ";
+    cout << value << endl;
+#endif
+}
 //--------------------------------------------------------------
 void ofApp::keyReleased(int key){
 
