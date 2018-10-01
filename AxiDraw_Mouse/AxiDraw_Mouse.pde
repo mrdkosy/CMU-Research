@@ -12,12 +12,18 @@
 // node cncserver --botType=axidraw
 // Then run this program. 
 
-
+import oscP5.*;
+import netP5.*;
+OscP5 oscP5;
 
 
 CNCServer cnc;
 boolean bPlotterIsZeroed;
 boolean bFollowingMouse;
+
+float plotterX = 0, plotterY = 0;
+
+boolean isOscControl = true;
 
 void setup() {
   size(1000, 1000); 
@@ -31,6 +37,9 @@ void setup() {
   cnc.unlock();
   cnc.penUp();
   println("Plotter is at home? Press 'u' to unlock, 'z' to zero, 'd' to draw");
+  
+  //osc
+  oscP5 = new OscP5(this,12345);
 }
 
 //=======================================
@@ -39,8 +48,17 @@ void draw() {
   if (bPlotterIsZeroed) {
     background(255, 255, 255); 
     if (bFollowingMouse) {
-      float mx = constrain(mouseX/10.0, 0, 100);
-      float my = constrain(mouseY/10.0, 0, 100); 
+      float mx, my;
+      if(isOscControl){
+        mx = constrain(plotterX*100, 0, 100);
+        my = constrain(plotterY*100, 0, 100);
+        text("Plotter is controlled by OSC", 20, 50);
+      }else{
+        mx = constrain(mouseX/10.0, 0, 100);
+        my = constrain(mouseY/10.0, 0, 100);
+        text("Plotter is controlled by YOUR MOUSE", 20, 50);
+      }
+      
       cnc.moveTo(mx, my);
       if (mousePressed) {
         cnc.penDown();
@@ -58,7 +76,6 @@ void draw() {
     text("Must zero plotter before use!", 20, 20);
     text("Move plotter to home position, press 'z'.", 20, 35);
   }
-  
 }
 
 
@@ -80,16 +97,31 @@ void keyPressed() {
     bFollowingMouse = !bFollowingMouse;
     println("bFollowingMouse = " + bFollowingMouse);
   }
+  
+  if(key == 'o'){
+     isOscControl = !isOscControl; 
+  }
 }
 
 //=======================================
 void exit() {
   cnc.penUp();
   cnc.unlock();
+  cnc.moveTo(0, 0);
   println("Goodbye!");
   super.exit();
 }
 
 void stop() {
   super.exit();
+}
+//=======================================
+void oscEvent(OscMessage msg) {
+  
+  if(msg.checkAddrPattern("/plotter/position/")==true) {
+    plotterX = msg.get(0).floatValue();
+    plotterY = msg.get(1).floatValue();
+    println("get OSC message : " + plotterX + ", " + plotterY); 
+  }
+  
 }
