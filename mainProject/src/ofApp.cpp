@@ -3,13 +3,15 @@
 //--------------------------------------------------------------
 void ofApp::setup(){
     ofSetBackgroundColor(255);
-    ofSetFrameRate(60);
+    ofSetFrameRate(30);
+    ofEnableAlphaBlending();
     
     //osc
     osc.setup("128.237.170.35", 12345);
     
     //plotter controller
     controller.init();
+    ofSetLineWidth(0.1);
 }
 
 //--------------------------------------------------------------
@@ -50,7 +52,7 @@ void ofApp::draw(){
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
-
+    controller.keyPressed(key);
 }
 
 //--------------------------------------------------------------
@@ -70,12 +72,7 @@ void ofApp::mouseDragged(int x, int y, int button){
 
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button){
-    ofxOscMessage msg;
-    msg.setAddress("/mouse/position/");
-    msg.addIntArg(x);
-    msg.addIntArg(y);
-    osc.sendMessage(msg);
-    cout << x << "," << y << endl;
+    controller.mousePressed(x, y);
 }
 
 //--------------------------------------------------------------

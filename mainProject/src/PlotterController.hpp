@@ -18,8 +18,9 @@
 #define REALTIME_CAPTURE_SAND
 #define WIDTH 640
 #define HEIGHT 480
-#define CELL_SIZE 10
-#define DISTANCE_PER_SECOND 100
+#define CELL_SIZE 30
+#define UNIT_DISTANCE 82
+
 
 
 #endif /* PlotterController_hpp */
@@ -33,11 +34,18 @@ private:
     float plot, movingTime; //control up or down, the time while plotter moving to other place
     float triggerTime; //the time that plotter start to move other place
     int direction;
+    bool isUpdatePlotterX;
+    ofVec2f mouse;
+    bool isMouseClicked;
     
     ofVideoGrabber capturePeople, captureSand;
     ofImage imagePeople;
     ofShader shader;
     ofFbo peopleFbo, sandFbo, goalImageFbo, cvSandImageFbo;
+
+    void ResizeSandCamera();
+    bool isResizeMode;
+    vector<ofVec2f> resizePositions;
     
     void sandSimulation();
     void sandSimulationInit();
@@ -48,6 +56,8 @@ public:
     void init();
     void update();
     void draw();
+    void keyPressed(int key);
+    void mousePressed(int x, int y);
     ofVec2f getPosition();
     
 };

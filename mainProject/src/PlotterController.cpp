@@ -12,11 +12,15 @@ void PlotterController::init(){
     
     shader.load("", "shader.frag");
     position = ofVec2f(0,0);
-    simulatePosition = ofVec2f(0,0);
+    simulatePosition = ofVec2f(0.11,0.11);
     direction = 1;
     plot = 0;
     movingTime = 0;
     triggerTime = 0;
+    isUpdatePlotterX = true;
+    isResizeMode = true;
+    mouse = ofVec2f(-1000, -1000);
+    isMouseClicked = false;
     
     /*****************
      people
@@ -47,7 +51,7 @@ void PlotterController::init(){
     //default aspect 4:3
     captureSand.setVerbose(true);
     captureSand.setDeviceID(0);
-    captureSand.initGrabber(WIDTH, HEIGHT);
+    captureSand.initGrabber(1920, 1080);
 #else
     sandSimulationInit();
 #endif
@@ -93,7 +97,7 @@ void PlotterController::draw(){
     
     goalImageFbo.begin();
     ofClear(255);
-    imageFilterShader(peopleFbo.getTexture(), true, 4, true);
+    imageFilterShader(peopleFbo.getTexture(), true, 3, true);
     goalImageFbo.end();
     goalImageFbo.draw(0,0);
     
@@ -134,8 +138,35 @@ void PlotterController::draw(){
     ofPopMatrix();
     
     
+    /*****************
+     cv
+     *****************/
+
     plotterPositionCalcurator();
     
+    
+    
+    /*****************
+     resize sand camera
+     *****************/
+
+    //resize sand camera
+    if (isResizeMode) ResizeSandCamera();
+    
+    
+    
+    
+    isMouseClicked = false;
+}
+//--------------------------------------------------------------
+void PlotterController::keyPressed(int key){
+    if(key == 'r') isResizeMode = !isResizeMode;
+    if (key == 'c') resizePositions.clear();
+
+}
+void PlotterController::mousePressed(int x, int y){
+    mouse = ofVec2f(x,y);
+    isMouseClicked = true;
 }
 //--------------------------------------------------------------
 void PlotterController::imageFilterShader(ofTexture& tex, bool mono, int posterization, bool less_resolution){
@@ -173,21 +204,39 @@ void PlotterController::imageFilterShader(ofTexture& tex, bool mono, int posteri
 //--------------------------------------------------------------
 void PlotterController::plotterPositionCalcurator(){
 
+    /*
+    if(position.x > WIDTH || position.x < 0){
+        direction *= -1;
+        position.y += CELL_SIZE;
+    }
+    if(position.y > HEIGHT) position.y = 0;
+    position.x += CELL_SIZE*direction;
+    */
+    
     
     float t = (ofGetElapsedTimef() - triggerTime);
     if( (movingTime - t) <= 0){
         
-        if(direction > 0){
-            position.x = 0;
+
+        float _t = 0;
+        if(isUpdatePlotterX){
+            if(direction > 0){
+                position.x = 0;
+            }else{
+                position.x = WIDTH;
+            }
+            direction *= -1;
+            _t = WIDTH;
         }else{
-            position.x = WIDTH;
+            position.y += CELL_SIZE;
+            if(position.y > HEIGHT) position.y = 0;
+            _t = CELL_SIZE;
         }
-        direction *= -1;
-        position.y += CELL_SIZE;
-        if(position.y > HEIGHT) position.y = 0;
         
+        
+        isUpdatePlotterX = !isUpdatePlotterX;
         triggerTime = ofGetElapsedTimef();
-        movingTime = float(WIDTH/DISTANCE_PER_SECOND);
+        movingTime = float(_t/UNIT_DISTANCE);
         
         
 #ifdef DEBUG
@@ -198,7 +247,7 @@ void PlotterController::plotterPositionCalcurator(){
         cout << " seconds" << endl;
 #endif
     }
-
+    
 
     
 #ifdef DEBUG
@@ -208,10 +257,67 @@ void PlotterController::plotterPositionCalcurator(){
     ofNoFill();
     ofSetColor(255, 0, 0);
     ofDrawCircle(position, 10);
+    
+    ofFill();
+    for (int x=0; x<(WIDTH/CELL_SIZE); x++) {
+        ofDrawLine(x*CELL_SIZE, 0, x*CELL_SIZE, HEIGHT);
+        
+    }
+    
+    for (int y=0; y<(HEIGHT/CELL_SIZE); y++) {
+        ofDrawLine(0, y*CELL_SIZE, WIDTH, y*CELL_SIZE);
+    }
+
     ofPopMatrix();
     ofPopStyle();
+    
 #endif
     
+}
+//--------------------------------------------------------------
+void PlotterController::ResizeSandCamera(){
+    
+    ofPushMatrix();
+    ofPushStyle();
+    ofTranslate(0, HEIGHT);
+    
+    
+    ofSetColor(0, 0, 0, 100);
+    ofDrawRectangle(0, 0, WIDTH, HEIGHT);
+    
+    ofSetColor(255, 255);
+    ofDrawBitmapString("mosue click to resize sand camera", 180, HEIGHT/2);
+    ofDrawBitmapString("push 'c' key to clear resize points", 180, HEIGHT/2+20);
+    ofDrawBitmapString("push 'r' key to quit this mode", 180, HEIGHT/2+40);
+    
+    
+    
+    if(isMouseClicked){
+        
+        //resize aspect 4:3
+        ofVec2f p = ofVec2f(mouse.x, mouse.y-HEIGHT);
+        if (resizePositions.size() == 1){
+            ofVec2f pp = resizePositions[0];
+            float x = abs(p.x - pp.x);
+            p.y = (x*3/4) + pp.y;
+        }
+        if(resizePositions.size()<2) resizePositions.push_back(p);
+    }
+    
+
+    ofSetColor(0, 0, 255, 255);
+    for (int i=0; i<resizePositions.size(); i++) {
+        ofDrawCircle(resizePositions[i].x, resizePositions[i].y, 5);
+        if(i > 0){
+            ofDrawLine(resizePositions[i-1].x, resizePositions[i-1].y, resizePositions[i].x,resizePositions[i-1].y);
+            ofDrawLine(resizePositions[i].x, resizePositions[i-1].y, resizePositions[i].x,resizePositions[i].y);
+        }
+    }
+    
+    
+    
+    ofPopStyle();
+    ofPopMatrix();
 }
 //--------------------------------------------------------------
 ofVec2f PlotterController::getPosition(){
