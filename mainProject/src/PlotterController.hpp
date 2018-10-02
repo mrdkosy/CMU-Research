@@ -19,7 +19,8 @@
 #define WIDTH 640
 #define HEIGHT 480
 #define CELL_SIZE 30
-#define UNIT_DISTANCE 82
+#define UNIT_DISTANCE 82 //when the size of cell is, how long the plotter move for a second
+#define UNIT_DISTANCE_PER_SECOND (WIDTH/7.3)
 
 
 
@@ -34,6 +35,7 @@ private:
     float plot, movingTime; //control up or down, the time while plotter moving to other place
     float triggerTime; //the time that plotter start to move other place
     int direction;
+    int drawingMode;
     bool isUpdatePlotterX;
     ofVec2f mouse;
     bool isMouseClicked;

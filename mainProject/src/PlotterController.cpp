@@ -14,6 +14,7 @@ void PlotterController::init(){
     position = ofVec2f(0,0);
     simulatePosition = ofVec2f(0.11,0.11);
     direction = 1;
+    drawingMode = 0;
     plot = 0;
     movingTime = 0;
     triggerTime = 0;
@@ -29,14 +30,13 @@ void PlotterController::init(){
 #ifdef REALTIME_CAPTURE_PEOPLE
     //default aspect 4:3
     capturePeople.setVerbose(true);
-    capturePeople.setDeviceID(1);
+    capturePeople.setDeviceID(0);
     capturePeople.initGrabber(WIDTH, HEIGHT);
 #else
     imagePeople.load("circle.png");
 #endif
     peopleFbo.allocate(WIDTH, HEIGHT);
     goalImageFbo.allocate(WIDTH, HEIGHT);
-    
     
 #ifdef DEBUG
     capturePeople.listDevices();
@@ -50,14 +50,14 @@ void PlotterController::init(){
 #ifdef REALTIME_CAPTURE_SAND
     //default aspect 4:3
     captureSand.setVerbose(true);
-    captureSand.setDeviceID(0);
+    captureSand.setDeviceID(1);
     captureSand.initGrabber(WIDTH, HEIGHT);
 #else
     sandSimulationInit();
 #endif
     sandFbo.allocate(WIDTH, HEIGHT);
     cvSandImageFbo.allocate(WIDTH, HEIGHT);
-    
+
 
 }
 //--------------------------------------------------------------
@@ -237,28 +237,56 @@ void PlotterController::plotterPositionCalcurator(){
         
 
         float _t = 0;
-        if(isUpdatePlotterX){
-            if(direction > 0){
-                position.x = 0;
+        
+        if(drawingMode == 0){
+            if(isUpdatePlotterX){
+                if(direction > 0){
+                    position.x = 0;
+                }else{
+                    position.x = WIDTH;
+                }
+                direction *= -1;
+                _t = WIDTH/UNIT_DISTANCE_PER_SECOND;
+                
             }else{
-                position.x = WIDTH;
+                position.y += CELL_SIZE;
+                _t = CELL_SIZE/UNIT_DISTANCE_PER_SECOND;//CELL_SIZE;
+                if(position.y > HEIGHT){
+                    position.y = 0;
+                    _t = sqrt(HEIGHT*HEIGHT + WIDTH*WIDTH)/UNIT_DISTANCE_PER_SECOND;//sqrt(HEIGHT*HEIGHT + WIDTH*WIDTH);
+                    drawingMode = 1;
+                }
             }
-            direction *= -1;
-            _t = WIDTH;
-        }else{
-            position.y += CELL_SIZE;
-            _t = CELL_SIZE;
-            if(position.y > HEIGHT){
-                position.y = 0;
-                _t = HEIGHT;
-            }
-            
         }
         
+        /* hereeee!!!!!
+        else if(drawingMode == 1){
+            
+            if(isUpdatePlotterX){
+                if(direction > 0){
+                    position.y = 0;
+                }else{
+                    position.y = HEIGHT;
+                }
+                direction *= -1;
+                _t = WIDTH;
+                
+            }else{
+                position.y += CELL_SIZE;
+                _t = CELL_SIZE;
+                if(position.y > HEIGHT){
+                    position.y = 0;
+                    _t = sqrt(HEIGHT*HEIGHT + WIDTH*WIDTH);
+                    drawingMode = 1;
+                }
+            }
+
+        }
+        */
         
         isUpdatePlotterX = !isUpdatePlotterX;
         triggerTime = ofGetElapsedTimef();
-        movingTime = float(_t/UNIT_DISTANCE);
+        movingTime = _t;//float(_t/UNIT_DISTANCE);
         
         
 #ifdef DEBUG
@@ -292,7 +320,6 @@ void PlotterController::plotterPositionCalcurator(){
 
     ofPopMatrix();
     ofPopStyle();
-    
 #endif
     
 }
@@ -348,8 +375,6 @@ void PlotterController::ResizeSandCamera(){
 }
 //--------------------------------------------------------------
 ofVec2f PlotterController::getPosition(){
-//    if(resizePositions.size() == 2 && !isResizeMode) return (position/ofVec2f(WIDTH,HEIGHT));
-//    else return ofVec2f(0,0);
     if(resizePositions.size() == 2 && !isResizeMode){
         return (position/ofVec2f(WIDTH,HEIGHT));
     }else{
