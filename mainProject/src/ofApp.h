@@ -30,4 +30,5 @@ class ofApp : public ofBaseApp{
     PlotterController controller;
     
     ofVec2f position;
+    float plotValue;
 };

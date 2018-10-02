@@ -31,6 +31,12 @@ void ofApp::draw(){
     controller.draw();
     
     //osc
+    float v = controller.getPlotValue();
+    if(v != plotValue){
+        sendOscMessage(v);
+        plotValue = v;
+    }
+
     ofVec2f p = controller.getPosition();
     if(p != position && p.x >= 0 && p.y >= 0){
         sendOscMessage(p);
@@ -62,8 +68,8 @@ void ofApp::sendOscMessage(ofVec2f p){
 }
 void ofApp::sendOscMessage(float value){
     ofxOscMessage msg;
-    msg.setAddress("/plotter/position/");
-    msg.addFloatArg(value);
+    msg.setAddress("/plotter/plotvalue/");
+    msg.addIntArg(value);
     osc.sendMessage(msg);
 #ifdef DEBUG
     cout << "OSC send : ";

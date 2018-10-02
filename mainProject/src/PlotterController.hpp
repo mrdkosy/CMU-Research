@@ -18,10 +18,10 @@
 #define REALTIME_CAPTURE_SAND
 #define WIDTH 640
 #define HEIGHT 480
-#define CELL_SIZE 30
+#define CELL_SIZE 32
 #define UNIT_DISTANCE 82 //when the size of cell is, how long the plotter move for a second
 #define UNIT_DISTANCE_PER_SECOND (WIDTH/7.3)
-
+#define SIMULATION_VIEWER
 
 
 #endif /* PlotterController_hpp */
@@ -31,10 +31,11 @@ private:
     void imageFilterShader(ofTexture& tex, bool mono, int posterization, bool less_resolution);
     
     void plotterPositionCalcurator();
-    ofVec2f position, simulatePosition; // control left right front back
-    float plot, movingTime; //control up or down, the time while plotter moving to other place
+    void plotterValueCalcurator();
+    ofVec2f position, prePosition, direction; // control left right front back
+    float plotValue, movingTime; //control up or down, the time while plotter moving to other place
+    // plotValue: 1->down, 0->up
     float triggerTime; //the time that plotter start to move other place
-    int direction;
     int drawingMode;
     bool isUpdatePlotterX;
     ofVec2f mouse;
@@ -63,5 +64,6 @@ public:
     void keyPressed(int key);
     void mousePressed(int x, int y);
     ofVec2f getPosition();
+    float getPlotValue();
     
 };

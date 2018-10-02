@@ -4,7 +4,7 @@
 //
 //  Created by Maya Atsuki on 2018/09/28.
 //
-    
+
 #include "PlotterController.hpp"
 
 //--------------------------------------------------------------
@@ -12,10 +12,10 @@ void PlotterController::init(){
     
     shader.load("", "shader.frag");
     position = ofVec2f(0,0);
-    simulatePosition = ofVec2f(0.11,0.11);
-    direction = 1;
+    prePosition = ofVec2f(0,0);
+    direction = ofVec2f(1,1);
     drawingMode = 0;
-    plot = 0;
+    plotValue = 1;
     movingTime = 0;
     triggerTime = 0;
     isUpdatePlotterX = true;
@@ -41,12 +41,12 @@ void PlotterController::init(){
 #ifdef DEBUG
     capturePeople.listDevices();
 #endif
-
+    
     
     /*****************
      sand
      *****************/
-
+    
 #ifdef REALTIME_CAPTURE_SAND
     //default aspect 4:3
     captureSand.setVerbose(true);
@@ -57,8 +57,8 @@ void PlotterController::init(){
 #endif
     sandFbo.allocate(WIDTH, HEIGHT);
     cvSandImageFbo.allocate(WIDTH, HEIGHT);
-
-
+    
+    
 }
 //--------------------------------------------------------------
 void PlotterController::update(){
@@ -96,7 +96,7 @@ void PlotterController::draw(){
     
     goalImageFbo.begin();
     ofClear(255);
-    imageFilterShader(peopleFbo.getTexture(), true, 3, true);
+    imageFilterShader(peopleFbo.getTexture(), true, 1, true);
     goalImageFbo.end();
     goalImageFbo.draw(0,0);
     
@@ -117,7 +117,7 @@ void PlotterController::draw(){
         trimmedImage.setROI(trimArea);
         trimmedImage.drawROI(0, 0, WIDTH, HEIGHT);
     }else{
-      captureSand.draw(0, 0);
+        captureSand.draw(0, 0);
     }
 #else
     sandSimulation();
@@ -136,7 +136,7 @@ void PlotterController::draw(){
     
     cvSandImageFbo.begin();
     ofClear(255);
-    imageFilterShader(sandFbo.getTexture(), true, 3, true);
+    imageFilterShader(sandFbo.getTexture(), true, 1, true);
     cvSandImageFbo.end();
     cvSandImageFbo.draw(0,0);
     
@@ -147,15 +147,17 @@ void PlotterController::draw(){
     /*****************
      cv
      *****************/
-
-    if(!isResizeMode)plotterPositionCalcurator();
+    
+    if(!isResizeMode){
+        plotterPositionCalcurator();
+    }
     
     
     
     /*****************
      resize sand camera
      *****************/
-
+    
     //resize sand camera
     if (isResizeMode) ResizeSandCamera();
     
@@ -173,7 +175,7 @@ void PlotterController::keyPressed(int key){
             float w = abs(resizePositions[0].x - resizePositions[1].x);
             float h = abs(resizePositions[0].y - resizePositions[1].y);
             trimmedImage.allocate(w, h);
-
+            
 #ifdef DEBUG
             cout << "trimmed image size : ";
             cout << w << " , " << h << endl;
@@ -181,7 +183,7 @@ void PlotterController::keyPressed(int key){
         }
     }
     if (key == 'c') resizePositions.clear();
-
+    
 }
 void PlotterController::mousePressed(int x, int y){
     mouse = ofVec2f(x,y);
@@ -202,7 +204,7 @@ void PlotterController::imageFilterShader(ofTexture& tex, bool mono, int posteri
     shader.setUniform1i("mono", int(mono));
     shader.setUniform1i("posterization", posterization);
     shader.setUniform1i("less_resolution", int(less_resolution));
-
+    
     ofSetColor(255,255);
     glBegin(GL_TRIANGLE_STRIP);
     glTexCoord2d(0, 0);
@@ -222,106 +224,140 @@ void PlotterController::imageFilterShader(ofTexture& tex, bool mono, int posteri
 }
 //--------------------------------------------------------------
 void PlotterController::plotterPositionCalcurator(){
-
-    /*
-    if(position.x > WIDTH || position.x < 0){
-        direction *= -1;
-        position.y += CELL_SIZE;
-    }
-    if(position.y > HEIGHT) position.y = 0;
-    position.x += CELL_SIZE*direction;
-    */
     
+    
+    //calculate next position
     float t = (ofGetElapsedTimef() - triggerTime);
     if( (movingTime - t) <= 0){
         
-
-        float _t = 0;
+        plotterValueCalcurator();
         
+        
+        prePosition = position;
+        
+        float _t = 0;
         if(drawingMode == 0){
             if(isUpdatePlotterX){
-                if(direction > 0){
-                    position.x = 0;
-                }else{
-                    position.x = WIDTH;
+                position.x += CELL_SIZE*direction.x;
+                if(position.x > WIDTH || position.x < 0){
+                    isUpdatePlotterX = false;
+                    if(position.x > WIDTH) position.x = WIDTH;
+                    else position.x = 0;
                 }
-                direction *= -1;
-                _t = WIDTH/UNIT_DISTANCE_PER_SECOND;
                 
-            }else{
-                position.y += CELL_SIZE;
-                _t = CELL_SIZE/UNIT_DISTANCE_PER_SECOND;//CELL_SIZE;
-                if(position.y > HEIGHT){
-                    position.y = 0;
-                    _t = sqrt(HEIGHT*HEIGHT + WIDTH*WIDTH)/UNIT_DISTANCE_PER_SECOND;//sqrt(HEIGHT*HEIGHT + WIDTH*WIDTH);
+            }
+            else{
+                position.y += CELL_SIZE*direction.y;
+                if(position.x >= WIDTH) direction.x = -1;
+                else direction.x = 1;
+                isUpdatePlotterX = true;
+                //outside screen
+                if(position.y > HEIGHT || position.y < 0){
                     drawingMode = 1;
+                    isUpdatePlotterX = false;
+                    if(position.y >= HEIGHT)direction.y = -1;
+                    else direction.y = 1;
                 }
             }
-        }
-        
-        /* hereeee!!!!!
-        else if(drawingMode == 1){
+            
+        }else if(drawingMode == 1) {
             
             if(isUpdatePlotterX){
-                if(direction > 0){
-                    position.y = 0;
-                }else{
-                    position.y = HEIGHT;
-                }
-                direction *= -1;
-                _t = WIDTH;
-                
-            }else{
-                position.y += CELL_SIZE;
-                _t = CELL_SIZE;
-                if(position.y > HEIGHT){
-                    position.y = 0;
-                    _t = sqrt(HEIGHT*HEIGHT + WIDTH*WIDTH);
-                    drawingMode = 1;
+                position.x += CELL_SIZE*direction.x;
+                if(position.y >= HEIGHT) direction.y = -1;
+                else direction.y = 1;
+                isUpdatePlotterX = false;
+                //outside screen
+                if(position.x > WIDTH || position.x < 0){
+                    drawingMode = 0;
+                    isUpdatePlotterX = false;
+                    if(position.x >= WIDTH)direction.x = -1;
+                    else direction.x = 1;
                 }
             }
-
+            else{
+                position.y += CELL_SIZE*direction.y;
+                if(position.y > HEIGHT || position.y < 0){
+                    isUpdatePlotterX = true;
+                    if(position.y > HEIGHT) position.y = HEIGHT;
+                    else position.y = 0;
+                }
+                
+            }
+            
+            
         }
-        */
+        _t = position.distance(prePosition)/UNIT_DISTANCE_PER_SECOND;
         
-        isUpdatePlotterX = !isUpdatePlotterX;
+        
         triggerTime = ofGetElapsedTimef();
-        movingTime = _t;//float(_t/UNIT_DISTANCE);
+        movingTime = _t;
+        plotterValueCalcurator();
         
         
 #ifdef DEBUG
-        cout << "change goal point to -> ";
-        cout << position << endl;
-        cout << "the time it takes to move to goal -> ";
-        cout << movingTime;
-        cout << " seconds" << endl;
+        if(movingTime > 0){
+            cout << "change goal point to -> ";
+            cout << position << endl;
+            cout << "the time it takes to move to goal -> ";
+            cout << movingTime;
+            cout << " seconds" << endl;
+        }
 #endif
     }
     
-
     
-#ifdef DEBUG
+    
+#ifdef SIMULATION_VIEWER
     ofPushStyle();
     ofPushMatrix();
     ofTranslate(WIDTH, HEIGHT);
-    ofNoFill();
+    if(plotValue == 1) ofNoFill();
+    else ofFill();
     ofSetColor(255, 0, 0);
-    ofDrawCircle(position, 10);
+    float x = ofMap(t, 0, movingTime, prePosition.x, position.x);
+    float y = ofMap(t, 0, movingTime, prePosition.y, position.y);
+    ofDrawCircle(position.x, position.y, 10);
     
-    ofFill();
-    for (int x=0; x<(WIDTH/CELL_SIZE); x++) {
+    for (int x=0; x<(WIDTH/CELL_SIZE)+1; x++) {
         ofDrawLine(x*CELL_SIZE, 0, x*CELL_SIZE, HEIGHT);
-        
     }
     
     for (int y=0; y<(HEIGHT/CELL_SIZE); y++) {
         ofDrawLine(0, y*CELL_SIZE, WIDTH, y*CELL_SIZE);
     }
-
+    
     ofPopMatrix();
     ofPopStyle();
 #endif
     
+}
+//--------------------------------------------------------------
+void PlotterController::plotterValueCalcurator(){
+    if(drawingMode == 0){
+        ofPixels pixels;
+        goalImageFbo.getTexture().readToPixels(pixels);
+        
+        int blackPoint = 0;
+        int threshold = 10;
+        int c = CELL_SIZE/2;
+        c = 3;
+        
+        for(int x = (position.x-c); x <= (position.x+c); x+=5){
+            for(int y = 0; y <= HEIGHT; y++){
+                ofColor color = pixels.getColor(x, y);
+                if(color == ofColor::black) blackPoint++;
+                if(blackPoint == threshold) break;
+            }
+        }
+        
+        if(blackPoint >= threshold) plotValue = 0;
+        else plotValue = 1;
+        
+        
+    }else if(drawingMode == 1){
+        
+    }
 }
 //--------------------------------------------------------------
 void PlotterController::ResizeSandCamera(){
@@ -358,7 +394,7 @@ void PlotterController::ResizeSandCamera(){
         }
     }
     
-
+    
     ofSetColor(0, 0, 255, 255);
     for (int i=0; i<resizePositions.size(); i++) {
         ofDrawCircle(resizePositions[i].x, resizePositions[i].y, 5);
@@ -368,7 +404,7 @@ void PlotterController::ResizeSandCamera(){
         ofDrawRectangle(trimArea);
         ofFill();
     }
-
+    
     
     ofPopStyle();
     ofPopMatrix();
@@ -381,6 +417,9 @@ ofVec2f PlotterController::getPosition(){
         return ofVec2f(-1,-1);
     }
 }
+float PlotterController::getPlotValue(){
+    return plotValue;
+}
 //--------------------------------------------------------------
 void PlotterController::sandSimulationInit(){
     sand.clear();
@@ -391,7 +430,7 @@ void PlotterController::sandSimulationInit(){
 }
 
 void PlotterController::sandSimulation(){
-
+    
     //draw
     for(int i=0; i<sand.size(); i++){
         sand[i].draw();
