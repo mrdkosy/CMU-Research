@@ -22,6 +22,7 @@ boolean bPlotterIsZeroed;
 boolean bFollowingMouse;
 
 float plotterX = 0, plotterY = 0;
+float plotterValue = 0;
 
 boolean isOscControl = true;
 
@@ -35,7 +36,7 @@ void setup() {
   bFollowingMouse = false;
   cnc = new CNCServer("http://localhost:4242");
   cnc.unlock();
-  cnc.penUp();
+  cnc.penUp(0);
   println("Plotter is at home? Press 'u' to unlock, 'z' to zero, 'd' to draw");
   
   //osc
@@ -48,23 +49,30 @@ void draw() {
   if (bPlotterIsZeroed) {
     background(255, 255, 255); 
     if (bFollowingMouse) {
+      
+      
+      
       float mx, my;
       if(isOscControl){
+        float val = constrain(plotterValue, 0, 1);
+        cnc.penUp(val);
         mx = constrain(plotterX*100, 0, 100);
         my = constrain(plotterY*100, 0, 100);
         text("Plotter is controlled by OSC", 20, 50);
       }else{
+        
+        if (mousePressed) {
+        cnc.penDown();
+      } else {
+        cnc.penUp(0);
+      }
         mx = constrain(mouseX/10.0, 0, 100);
         my = constrain(mouseY/10.0, 0, 100);
         text("Plotter is controlled by YOUR MOUSE", 20, 50);
       }
       
       cnc.moveTo(mx, my);
-      if (mousePressed) {
-        cnc.penDown();
-      } else {
-        cnc.penUp();
-      }
+      
     } else {
       fill(0, 0, 0);
       text ("Enable drawing to move plotter.", 20, 20);
@@ -105,7 +113,7 @@ void keyPressed() {
 
 //=======================================
 void exit() {
-  cnc.penUp();
+  cnc.penUp(0);
   cnc.unlock();
   cnc.moveTo(0, 0);
   println("Goodbye!");
@@ -124,4 +132,7 @@ void oscEvent(OscMessage msg) {
     println("get OSC message : " + plotterX + ", " + plotterY); 
   }
   
+  if(msg.checkAddrPattern("/plotter/plotvalue/")==true) {
+    plotterValue = msg.get(0).intValue(); 
+  }    
 }
