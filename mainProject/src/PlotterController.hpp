@@ -20,7 +20,7 @@
 #define HEIGHT 480
 #define CELL_SIZE 32
 #define UNIT_DISTANCE 82 //when the size of cell is, how long the plotter move for a second
-#define UNIT_DISTANCE_PER_SECOND (WIDTH/7.3)
+#define UNIT_DISTANCE_PER_SECOND (WIDTH/7.5)
 #define SIMULATION_VIEWER
 
 
@@ -28,7 +28,7 @@
 
 class PlotterController{
 private:
-    void imageFilterShader(ofTexture& tex, bool mono, int posterization, bool less_resolution);
+    void imageFilterShader(ofTexture& tex, bool mono, int posterization, bool less_resolution, bool laplacian);
     
     void plotterPositionCalcurator();
     void plotterValueCalcurator();

@@ -96,7 +96,8 @@ void PlotterController::draw(){
     
     goalImageFbo.begin();
     ofClear(255);
-    imageFilterShader(peopleFbo.getTexture(), true, 1, true);
+    //imageFilterShader(peopleFbo.getTexture(), true, 1, true, true);
+    imageFilterShader(peopleFbo.getTexture(), false, 0, false, true);
     goalImageFbo.end();
     goalImageFbo.draw(0,0);
     
@@ -136,7 +137,8 @@ void PlotterController::draw(){
     
     cvSandImageFbo.begin();
     ofClear(255);
-    imageFilterShader(sandFbo.getTexture(), true, 1, true);
+    imageFilterShader(sandFbo.getTexture(), true, 4, true, false);
+    //imageFilterShader(sandFbo.getTexture(), false, 0, false, true);
     cvSandImageFbo.end();
     cvSandImageFbo.draw(0,0);
     
@@ -190,7 +192,7 @@ void PlotterController::mousePressed(int x, int y){
     isMouseClicked = true;
 }
 //--------------------------------------------------------------
-void PlotterController::imageFilterShader(ofTexture& tex, bool mono, int posterization, bool less_resolution){
+void PlotterController::imageFilterShader(ofTexture& tex, bool mono, int posterization, bool less_resolution, bool laplacian){
     
     shader.begin();
     float coef[] = {
@@ -204,6 +206,7 @@ void PlotterController::imageFilterShader(ofTexture& tex, bool mono, int posteri
     shader.setUniform1i("mono", int(mono));
     shader.setUniform1i("posterization", posterization);
     shader.setUniform1i("less_resolution", int(less_resolution));
+    shader.setUniform1i("laplacian", int(laplacian));
     
     ofSetColor(255,255);
     glBegin(GL_TRIANGLE_STRIP);
@@ -334,28 +337,37 @@ void PlotterController::plotterPositionCalcurator(){
 }
 //--------------------------------------------------------------
 void PlotterController::plotterValueCalcurator(){
-    if(drawingMode == 0){
+    if(drawingMode == 0 || drawingMode == 1){
         ofPixels pixels;
         goalImageFbo.getTexture().readToPixels(pixels);
         
         int blackPoint = 0;
         int threshold = 10;
         int c = CELL_SIZE/2;
-        c = 3;
         
-        for(int x = (position.x-c); x <= (position.x+c); x+=5){
-            for(int y = 0; y <= HEIGHT; y++){
-                ofColor color = pixels.getColor(x, y);
-                if(color == ofColor::black) blackPoint++;
-                if(blackPoint == threshold) break;
+        if(drawingMode == 0){
+            int skip = 5;
+            for(int x = (position.x-c); x <= (position.x+c); x+=skip){
+                for(int y = 0; y <= HEIGHT; y+= (skip*3)){
+                    ofColor color = pixels.getColor(x, y);
+                    if(color == ofColor::black) blackPoint++;
+                    if(blackPoint == threshold) break;
+                }
+            }
+        }else if (drawingMode == 1){
+            int skip = 5;
+            for(int x = (position.x-c); x <= (position.x+c); x+=skip){
+                for(int y = (position.y-c); y <= (position.y+c); y+=skip){
+                    ofColor color = pixels.getColor(x, y);
+                    if(color == ofColor::black) blackPoint++;
+                    if(blackPoint == threshold) break;
+                }
             }
         }
         
-        if(blackPoint >= threshold) plotValue = 0;
-        else plotValue = 1;
+        if(blackPoint >= threshold) plotValue = 1;
+        else plotValue = 0;
         
-        
-    }else if(drawingMode == 1){
         
     }
 }

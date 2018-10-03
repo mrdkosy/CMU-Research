@@ -33,7 +33,7 @@ void ofApp::draw(){
     //osc
     float v = controller.getPlotValue();
     if(v != plotValue){
-        sendOscMessage(v);
+        sendOscMessage(v*0.35);
         plotValue = v;
     }
 
@@ -69,7 +69,7 @@ void ofApp::sendOscMessage(ofVec2f p){
 void ofApp::sendOscMessage(float value){
     ofxOscMessage msg;
     msg.setAddress("/plotter/plotvalue/");
-    msg.addIntArg(value);
+    msg.addFloatArg(value);
     osc.sendMessage(msg);
 #ifdef DEBUG
     cout << "OSC send : ";
