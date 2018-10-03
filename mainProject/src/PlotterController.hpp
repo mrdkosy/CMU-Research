@@ -18,9 +18,9 @@
 #define REALTIME_CAPTURE_SAND
 #define WIDTH 640
 #define HEIGHT 480
-#define CELL_SIZE 32
+#define CELL_SIZE 32 //2,4,8,10,16,20,32,40,50
 #define UNIT_DISTANCE 82 //when the size of cell is, how long the plotter move for a second
-#define UNIT_DISTANCE_PER_SECOND (WIDTH/7.5)
+#define UNIT_DISTANCE_PER_SECOND (WIDTH/8)
 #define SIMULATION_VIEWER
 
 

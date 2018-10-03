@@ -7,7 +7,7 @@ void ofApp::setup(){
     ofEnableAlphaBlending();
     
     //osc
-    osc.setup("128.237.187.73", 12345);
+    osc.setup("128.237.130.218", 12345);
     
     //plotter controller
     controller.init();
@@ -33,7 +33,7 @@ void ofApp::draw(){
     //osc
     float v = controller.getPlotValue();
     if(v != plotValue){
-        sendOscMessage(v*0.35);
+        sendOscMessage(v); //*0.35
         plotValue = v;
     }
 

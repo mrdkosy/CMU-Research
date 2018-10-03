@@ -34,7 +34,8 @@ void main(){
                 }
                 break;
             }
-        }        
+        }
+        
     }else if(posterization == 1){
         if(color.r < 0.5) color.rgb = vec3(0.0);
         else color.rgb = vec3(1.0);
@@ -75,7 +76,7 @@ void main(){
         destColor = max(destColor, 0.0);
         float grayColor = (destColor.r + destColor.g + destColor.b)/3.0;
         
-        color.rgb = vec3(grayColor);
+        color.rgb = 1.0-vec3(grayColor);
     }
     
 

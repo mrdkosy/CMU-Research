@@ -97,7 +97,7 @@ void PlotterController::draw(){
     goalImageFbo.begin();
     ofClear(255);
     //imageFilterShader(peopleFbo.getTexture(), true, 1, true, true);
-    imageFilterShader(peopleFbo.getTexture(), false, 0, false, true);
+    imageFilterShader(peopleFbo.getTexture(), true, 4, false, false);
     goalImageFbo.end();
     goalImageFbo.draw(0,0);
     
@@ -137,7 +137,7 @@ void PlotterController::draw(){
     
     cvSandImageFbo.begin();
     ofClear(255);
-    imageFilterShader(sandFbo.getTexture(), true, 4, true, false);
+    imageFilterShader(sandFbo.getTexture(), true, 3, true, false);
     //imageFilterShader(sandFbo.getTexture(), false, 0, false, true);
     cvSandImageFbo.end();
     cvSandImageFbo.draw(0,0);
@@ -228,13 +228,48 @@ void PlotterController::imageFilterShader(ofTexture& tex, bool mono, int posteri
 //--------------------------------------------------------------
 void PlotterController::plotterPositionCalcurator(){
     
-    
     //calculate next position
     float t = (ofGetElapsedTimef() - triggerTime);
+
+    
+    
+#ifdef SIMULATION_VIEWER
+    ofPushStyle();
+    ofPushMatrix();
+    ofTranslate(WIDTH, HEIGHT);
+    if(plotValue == 1) ofNoFill();
+    else ofFill();
+    ofSetColor(255, 0, 0);
+    float x = ofMap(t, 0, movingTime, prePosition.x, position.x);
+    float y = ofMap(t, 0, movingTime, prePosition.y, position.y);
+    cout << x << "," << t << "," << movingTime << "," << prePosition.x << "," << position.x << endl;
+    ofDrawCircle(x, y, 10);
+    
+    for (int x=0; x<(WIDTH/CELL_SIZE)+1; x++) {
+        ofDrawLine(x*CELL_SIZE, 0, x*CELL_SIZE, HEIGHT);
+    }
+    
+    for (int y=0; y<(HEIGHT/CELL_SIZE); y++) {
+        ofDrawLine(0, y*CELL_SIZE, WIDTH, y*CELL_SIZE);
+    }
+    
+    ofPopMatrix();
+    
+    ofPushMatrix();
+    ofTranslate(WIDTH, 0);
+    ofDrawCircle(x, y, 10);
+    ofPopMatrix();
+    
+    ofPopStyle();
+
+#endif
+
+    
+    
+    
     if( (movingTime - t) <= 0){
         
         plotterValueCalcurator();
-        
         
         prePosition = position;
         
@@ -311,29 +346,6 @@ void PlotterController::plotterPositionCalcurator(){
     
     
     
-#ifdef SIMULATION_VIEWER
-    ofPushStyle();
-    ofPushMatrix();
-    ofTranslate(WIDTH, HEIGHT);
-    if(plotValue == 1) ofNoFill();
-    else ofFill();
-    ofSetColor(255, 0, 0);
-    float x = ofMap(t, 0, movingTime, prePosition.x, position.x);
-    float y = ofMap(t, 0, movingTime, prePosition.y, position.y);
-    ofDrawCircle(position.x, position.y, 10);
-    
-    for (int x=0; x<(WIDTH/CELL_SIZE)+1; x++) {
-        ofDrawLine(x*CELL_SIZE, 0, x*CELL_SIZE, HEIGHT);
-    }
-    
-    for (int y=0; y<(HEIGHT/CELL_SIZE); y++) {
-        ofDrawLine(0, y*CELL_SIZE, WIDTH, y*CELL_SIZE);
-    }
-    
-    ofPopMatrix();
-    ofPopStyle();
-#endif
-    
 }
 //--------------------------------------------------------------
 void PlotterController::plotterValueCalcurator(){
@@ -350,7 +362,7 @@ void PlotterController::plotterValueCalcurator(){
             for(int x = (position.x-c); x <= (position.x+c); x+=skip){
                 for(int y = 0; y <= HEIGHT; y+= (skip*3)){
                     ofColor color = pixels.getColor(x, y);
-                    if(color == ofColor::black) blackPoint++;
+                    if(color.r < 200) blackPoint++;
                     if(blackPoint == threshold) break;
                 }
             }
@@ -358,9 +370,12 @@ void PlotterController::plotterValueCalcurator(){
             int skip = 5;
             for(int x = (position.x-c); x <= (position.x+c); x+=skip){
                 for(int y = (position.y-c); y <= (position.y+c); y+=skip){
-                    ofColor color = pixels.getColor(x, y);
-                    if(color == ofColor::black) blackPoint++;
+                    if(0 <= x && x <= WIDTH && 0 <= y && y < HEIGHT){
+                        ofColor color = pixels.getColor(x, y);
+                        if(color.r < 200) blackPoint++;
+                    }
                     if(blackPoint == threshold) break;
+                        
                 }
             }
         }
