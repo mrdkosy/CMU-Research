@@ -33,7 +33,7 @@ void PlotterController::init(){
     capturePeople.setDeviceID(0);
     capturePeople.initGrabber(WIDTH, HEIGHT);
 #else
-    imagePeople.load("circle.png");
+    imagePeople.load("noise.png");
 #endif
     peopleFbo.allocate(WIDTH, HEIGHT);
     goalImageFbo.allocate(WIDTH, HEIGHT);
@@ -97,7 +97,7 @@ void PlotterController::draw(){
     goalImageFbo.begin();
     ofClear(255);
     //imageFilterShader(peopleFbo.getTexture(), true, 1, true, true);
-    imageFilterShader(peopleFbo.getTexture(), true, 4, false, false);
+    imageFilterShader(peopleFbo.getTexture(), true, 5, false, false);
     goalImageFbo.end();
     goalImageFbo.draw(0,0);
     
@@ -242,7 +242,6 @@ void PlotterController::plotterPositionCalcurator(){
     ofSetColor(255, 0, 0);
     float x = ofMap(t, 0, movingTime, prePosition.x, position.x);
     float y = ofMap(t, 0, movingTime, prePosition.y, position.y);
-    cout << x << "," << t << "," << movingTime << "," << prePosition.x << "," << position.x << endl;
     ofDrawCircle(x, y, 10);
     
     for (int x=0; x<(WIDTH/CELL_SIZE)+1; x++) {
@@ -356,27 +355,44 @@ void PlotterController::plotterValueCalcurator(){
         int blackPoint = 0;
         int threshold = 10;
         int c = CELL_SIZE/2;
+        int blackThreshold = 126;
         
+        bool isEnd = false;
         if(drawingMode == 0){
-            int skip = 5;
-            for(int x = (position.x-c); x <= (position.x+c); x+=skip){
-                for(int y = 0; y <= HEIGHT; y+= (skip*3)){
-                    ofColor color = pixels.getColor(x, y);
-                    if(color.r < 200) blackPoint++;
-                    if(blackPoint == threshold) break;
+            int skipX = 1;
+            int skipY = 1;
+            for(int x = (position.x-c); x <= (position.x+c); x+=skipX){
+                for(int y = 0; y < HEIGHT; y+= skipY){
+                    
+                    if(0 <= x && x < WIDTH && 0 <= y && y < HEIGHT){
+                        ofColor color = pixels.getColor(x, y);
+                        if(color.r < blackThreshold){
+                            blackPoint++;
+                            if(blackPoint == threshold){
+                                isEnd = true;
+                                break;
+                            }
+                        }
+                    }
                 }
+                if(isEnd) break;
             }
         }else if (drawingMode == 1){
-            int skip = 5;
-            for(int x = (position.x-c); x <= (position.x+c); x+=skip){
-                for(int y = (position.y-c); y <= (position.y+c); y+=skip){
-                    if(0 <= x && x <= WIDTH && 0 <= y && y < HEIGHT){
+            int skipX = 1;
+            int skipY = 1;
+            for(int x = (position.x-c); x <= (position.x+c); x+=skipX){
+                for(int y = (position.y-c); y <= (position.y+c); y+=skipY){
+                    
+                    if(0 <= x && x < WIDTH && 0 <= y && y < HEIGHT){
                         ofColor color = pixels.getColor(x, y);
-                        if(color.r < 200) blackPoint++;
+                        if(color.r < blackThreshold) blackPoint++;
+                        if(blackPoint == threshold){
+                            isEnd = true;
+                            break;
+                        }
                     }
-                    if(blackPoint == threshold) break;
-                        
                 }
+                if (isEnd) break;
             }
         }
         
