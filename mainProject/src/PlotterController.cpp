@@ -33,7 +33,7 @@ void PlotterController::init(){
     capturePeople.setDeviceID(0);
     capturePeople.initGrabber(WIDTH, HEIGHT);
 #else
-    imagePeople.load("noise.png");
+    imagePeople.load("circle.png");
 #endif
     peopleFbo.allocate(WIDTH, HEIGHT);
     goalImageFbo.allocate(WIDTH, HEIGHT);
@@ -137,7 +137,7 @@ void PlotterController::draw(){
     
     cvSandImageFbo.begin();
     ofClear(255);
-    imageFilterShader(sandFbo.getTexture(), true, 3, true, false);
+    imageFilterShader(sandFbo.getTexture(), true, 2, true, false);
     //imageFilterShader(sandFbo.getTexture(), false, 0, false, true);
     cvSandImageFbo.end();
     cvSandImageFbo.draw(0,0);
@@ -355,7 +355,7 @@ void PlotterController::plotterValueCalcurator(){
         int blackPoint = 0;
         int threshold = 10;
         int c = CELL_SIZE/2;
-        int blackThreshold = 126;
+        int blackThreshold = 230;
         
         bool isEnd = false;
         if(drawingMode == 0){
