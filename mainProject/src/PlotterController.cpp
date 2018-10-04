@@ -195,11 +195,6 @@ void PlotterController::mousePressed(int x, int y){
 void PlotterController::imageFilterShader(ofTexture& tex, bool mono, int posterization, bool less_resolution, bool laplacian){
     
     shader.begin();
-    float coef[] = {
-        1.0,  1.0,  1.0,
-        1.0, -8.0,  1.0,
-        1.0,  1.0,  1.0
-    };
     
     shader.setUniform2f("resolution", WIDTH, HEIGHT);
     shader.setUniformTexture("tex'", tex, 0);
@@ -348,6 +343,7 @@ void PlotterController::plotterPositionCalcurator(){
 }
 //--------------------------------------------------------------
 void PlotterController::plotterValueCalcurator(){
+    
     if(drawingMode == 0 || drawingMode == 1){
         ofPixels pixels;
         goalImageFbo.getTexture().readToPixels(pixels);
@@ -355,7 +351,7 @@ void PlotterController::plotterValueCalcurator(){
         int blackPoint = 0;
         int threshold = 10;
         int c = CELL_SIZE/2;
-        int blackThreshold = 230;
+        int blackThreshold = 230	;
         
         bool isEnd = false;
         if(drawingMode == 0){
