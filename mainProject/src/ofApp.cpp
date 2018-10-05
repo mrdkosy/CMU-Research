@@ -7,7 +7,7 @@ void ofApp::setup(){
     ofEnableAlphaBlending();
     
     //osc
-    osc.setup("128.237.180.35", 12345);
+    osc.setup("128.237.208.39", 12345);
     
     //plotter controller
     controller.init();

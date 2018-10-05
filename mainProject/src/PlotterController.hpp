@@ -13,12 +13,12 @@
 #include "SandSimulation.hpp"
 #include "ofxOpenCv.h"
 
-#define DEBUG
+//#define DEBUG
 //#define REALTIME_CAPTURE_PEOPLE
 #define REALTIME_CAPTURE_SAND
 #define WIDTH 640
 #define HEIGHT 480
-#define CELL_SIZE 16 //2,4,8,10,16,20,32,40,50
+#define CELL_SIZE 32 //2,4,8,10,16,20,32,40,50
 #define UNIT_DISTANCE 82 //when the size of cell is, how long the plotter move for a second
 #define UNIT_DISTANCE_PER_SECOND (WIDTH/8)
 #define SIMULATION_VIEWER
@@ -32,6 +32,8 @@ private:
     
     void plotterPositionCalcurator();
     void plotterValueCalcurator();
+    void DrawingAlgorithm1();
+    void DrawingAlgorithm2();
     ofVec2f position, prePosition, direction; // control left right front back
     float plotValue, movingTime; //control up or down, the time while plotter moving to other place
     // plotValue: 1->down, 0->up
