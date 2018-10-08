@@ -549,7 +549,7 @@ void PlotterController::DrawingAlgorithm2(){
     
     ofPopMatrix();
     
-
+    
     
     ofPushMatrix();
     ofTranslate(WIDTH, HEIGHT);
@@ -570,7 +570,7 @@ void PlotterController::DrawingAlgorithm2(){
     
     
     bool isBlack_goalImage = false, isBlack_sandImage = false;
-    ofVec2f nextPosition;
+    ofVec2f nextPosition, nearestBlackArea;
     
     
     if( (movingTime - t) <= 0){
@@ -591,8 +591,10 @@ void PlotterController::DrawingAlgorithm2(){
             isGoNextStep = false;
             
         }else{
+            nearestBlackArea = ofVec2f(-1, -1);
             int i = 0;
             while(i < 50){ //loop until find bad cell(max is 100)
+                
                 
                 int nx = int(ofRandom(WIDTH/CELL_SIZE + 1)) * CELL_SIZE;
                 int ny = int(ofRandom(HEIGHT/CELL_SIZE + 1)) * CELL_SIZE;
@@ -673,8 +675,16 @@ void PlotterController::DrawingAlgorithm2(){
                                     if(_sColor <= threshold) aroundSandColor[i]++;
                                 }
                             }
-                            
                         }
+                        
+                        if(aroundGoalColor[i] > 0){
+                            if(nearestBlackArea == ofVec2f(-1, -1)){
+                                nearestBlackArea = ofVec2f(nextPosition.x + aroundPixels[i].x,
+                                                           nextPosition.y + aroundPixels[i].y);
+                            }
+                        }
+                        
+                        
                     }
                     
                     
@@ -732,8 +742,24 @@ void PlotterController::DrawingAlgorithm2(){
                     sendOscMessage(position);
                     isGoNextStep = true;
                 }else{
-                    if(isBlackToWhite){}
-                    isGoNextStep = false;
+                    if(isBlackToWhite){
+                        if(nearestBlackArea != ofVec2f(-1, -1)){
+                            prePosition = position;
+                            position = nextPosition;
+                            moveToPosition = nearestBlackArea;
+                            triggerTime = ofGetElapsedTimef();
+                            movingTime = position.distance(prePosition)/UNIT_DISTANCE_PER_SECOND;
+                            plotValue = 1;
+                            sendOscMessage(plotValue);
+                            sendOscMessage(position);
+                        }else{
+                            isGoNextStep = false;
+                        }
+                    }else{
+                        isGoNextStep = false;
+                    }
+
+                    
                 }
                 
                 
