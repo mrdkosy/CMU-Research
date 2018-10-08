@@ -40,7 +40,7 @@ void PlotterController::init(){
     capturePeople.setDeviceID(0);
     capturePeople.initGrabber(WIDTH, HEIGHT);
 #else
-    imagePeople.load("circle.png");
+    imagePeople.load("plus.png");
 #endif
     peopleFbo.allocate(WIDTH, HEIGHT);
     goalImageFbo.allocate(WIDTH, HEIGHT);
@@ -623,7 +623,7 @@ void PlotterController::DrawingAlgorithm2(){
                 
                 //a certain threshold
                 if(gColor > 0) isBlack_goalImage = true; //!!!!!!!!!!
-                if(sColor > (CELL_SIZE*CELL_SIZE/3*2)) isBlack_sandImage = true; //!!!!!!!!!!
+                if(sColor > (CELL_SIZE*CELL_SIZE/2)) isBlack_sandImage = true; //!!!!!!!!!!
                 
                 
                 float _t = 0;
@@ -641,7 +641,7 @@ void PlotterController::DrawingAlgorithm2(){
                 bool plotterMove = false;
                 int loop=1;
                 
-                while (loop < 20) { //how many cells around here search
+                while (loop < 40) { //how many cells around here search
                     
                     
                     ofVec2f aroundPixels[8] = {
@@ -732,8 +732,10 @@ void PlotterController::DrawingAlgorithm2(){
                     sendOscMessage(position);
                     isGoNextStep = true;
                 }else{
+                    if(isBlackToWhite){}
                     isGoNextStep = false;
                 }
+                
                 
             }//end isNextStep
             
