@@ -40,7 +40,7 @@ void PlotterController::init(){
     capturePeople.setDeviceID(0);
     capturePeople.initGrabber(WIDTH, HEIGHT);
 #else
-    imagePeople.load("plus.png");
+    imagePeople.load("circle.png");
 #endif
     peopleFbo.allocate(WIDTH, HEIGHT);
     goalImageFbo.allocate(WIDTH, HEIGHT);
@@ -91,7 +91,9 @@ void PlotterController::draw(){
 #ifdef REALTIME_CAPTURE_PEOPLE
     capturePeople.draw(0,0);
 #else
+
     imagePeople.draw(0,0, WIDTH, HEIGHT);
+
 #endif
     peopleFbo.end();
     peopleFbo.draw(0,0);
