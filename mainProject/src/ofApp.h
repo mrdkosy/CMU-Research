@@ -4,6 +4,8 @@
 #include "PlotterController.hpp"
 #include "ofxOscSender.h"
 
+//#define DEBUG
+
 class ofApp : public ofBaseApp{
 
 	public:
@@ -28,6 +30,7 @@ class ofApp : public ofBaseApp{
     
     ofxOscSender osc;
     PlotterController controller;
+    bool isConnectedOSC;
     
     ofVec2f position;
     float plotValue;

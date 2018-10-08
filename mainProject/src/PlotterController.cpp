@@ -14,6 +14,7 @@ void PlotterController::init(){
     position = ofVec2f(0,0);
     prePosition = ofVec2f(0,0);
     direction = ofVec2f(1,1);
+    moveToPosition = ofVec2f(0,0);
     drawingMode = 0;
     plotValue = 1;
     movingTime = 0;
@@ -22,6 +23,8 @@ void PlotterController::init(){
     isResizeMode = true;
     mouse = ofVec2f(-1000, -1000);
     isMouseClicked = false;
+    isGoNextStep = false;
+    isBlackToWhite = true;
     
     /*****************
      people
@@ -499,11 +502,10 @@ void PlotterController::DrawingAlgorithm1(){
 #endif
     }
 }
-
+//--------------------------------------------------------------
 void PlotterController::DrawingAlgorithm2(){
     
     bool isBlack_goalImage = false, isBlack_sandImage = false;
-    bool isGoNextStep = false;
     ofVec2f nextPosition;
     
     float t = (ofGetElapsedTimef() - triggerTime);
@@ -511,69 +513,137 @@ void PlotterController::DrawingAlgorithm2(){
         ofPixels gPixels, sPixels;
         goalImageFbo.getTexture().readToPixels(gPixels);
         cvSandImageFbo.getTexture().readToPixels(sPixels);
+        
+        if(!isGoNextStep){
+            int i = 0;
+            while(i < 100){ //loop until find bad cell(max is 100)
+                
+                int nx = int(ofRandom(WIDTH/CELL_SIZE + 1)) * CELL_SIZE;
+                int ny = int(ofRandom(HEIGHT/CELL_SIZE + 1)) * CELL_SIZE;
+                nextPosition = ofVec2f(nx, ny);
+                
+                
+                int c = CELL_SIZE/2;
+                int gColor = 0, sColor = 0;
+                for(int y=-c; y<c; y++){
+                    for(int x = -c; x<c; x++){
+                        int _x = nextPosition.x + x;
+                        int _y = nextPosition.y + y;
+                        if(0 <= _x && _x < WIDTH && 0<= _y && _y < HEIGHT){
+                            int _gColor = gPixels.getColor(_x, _y).r;
+                            int _sColor = sPixels.getColor(_x, _y).r;
+                            if( _gColor == 0 ) gColor++;
+                            if( _sColor == 0 ) sColor++;
+                        }
+                    }
+                }
+                
+                //a certain threshold
+                if(gColor > 0) isBlack_goalImage = true; //!!!!!!!!!!
+                if(sColor > (CELL_SIZE*CELL_SIZE/3)) isBlack_sandImage = true; //!!!!!!!!!!
+                
+                
+                float _t = 0;
+                //the cell of sand picture is not good
+                if(isBlack_goalImage != isBlack_sandImage){
+                    isGoNextStep = true;
+                    break;
+                }
+                i++;
+            }
+            
+            prePosition = position;
+            position = nextPosition;
+            plotValue = 1; //down
 
-        int i = 0;
-        while(i < 30){ //loop until find bad cell
-            float range = 200;
-            nextPosition = ofVec2f( ofRandom(0, WIDTH), ofRandom(0, HEIGHT));
+        }else{ //analyze the each color of up, down, right and left cell
+            
+            
+            ofVec2f aroundPixels[4] = {
+                ofVec2f(0, - CELL_SIZE), //up
+                ofVec2f(CELL_SIZE, 0), //right
+                ofVec2f(0, CELL_SIZE), //down
+                ofVec2f(-CELL_SIZE, 0) //left
+            };
+            int aroundGoalColor[4] = {0, 0, 0, 0};
+            int aroundSandColor[4] = {0, 0, 0, 0};
+            
             
             int c = CELL_SIZE/2;
-            int gColor = 0, sColor = 0;
             for(int y=-c; y<c; y++){
-                for(int x = -c; x<c; x++){
-                    int _x = nextPosition.x + x;
-                    int _y = nextPosition.y + y;
-                    if(0 <= _x && _x < WIDTH && 0<= _y && _y < HEIGHT){
-                        int _gColor = gPixels.getColor(_x, _y).r;
-                        int _sColor = sPixels.getColor(_x, _y).r;
-                        if( _gColor == 0 ) gColor++;
-                        if( _sColor == 0 ) sColor++;
+                for(int x=-c; x<c; x++){
+                    
+                    for(int i=0; i<4; i++){
+                        int _x = position.x + aroundPixels[i].x + x;
+                        int _y = position.y + aroundPixels[i].y+y;
+                        if(0 <= _x && _x < WIDTH && 0 <= _y && _y < HEIGHT){
+                            int _gColor = gPixels.getColor(_x, _y).r;
+                            int _sColor = sPixels.getColor(_x, _y).r;
+                            
+                            int threshold = 0;
+                            if(_gColor <= threshold) aroundGoalColor[i]++;
+                            if(_sColor <= threshold) aroundSandColor[i]++;
+                        }
                     }
+                    
                 }
             }
             
-            
-            if(gColor > 0) isBlack_goalImage = true;
-            if(sColor > (CELL_SIZE*CELL_SIZE/3)) isBlack_sandImage = true;
-            
-            float _t = 0;
-            //the cell of sand picture is not good
-            if(isBlack_goalImage != isBlack_sandImage){
-                isGoNextStep = true;
-                break;
+            //choose the different cell from goal image
+            int maxDifferencesIndex = 0;
+            for(int i=1; i<4; i++){
+                int diff = aroundGoalColor[i] - aroundSandColor[i];
+                int maxDiff = aroundGoalColor[maxDifferencesIndex] - aroundSandColor[maxDifferencesIndex];
+                if( !isBlack_goalImage ){ //look for the white cell wants iron filings around nextPoint
+                    if( maxDiff < diff ) maxDifferencesIndex = i;
+                }else{ // lokk for the black cell wants to remove iron filings around nextPoint
+                    if(diff < maxDiff) maxDifferencesIndex = i;
+                }
             }
-            i++;
-        }
-        
-        if(isGoNextStep) {
-            float gUp, gDown, gRight, gLeft, sUp, sDown, sRight, sLeft;
             
-
+            int maxDiff = aroundGoalColor[maxDifferencesIndex] - aroundSandColor[maxDifferencesIndex];
+            cout << "maxDiff : " << maxDiff << endl; //!!!!!!!!!!
+            // if(abs(maxDiff))
+            
+            prePosition = position;
+            position = prePosition + aroundPixels[maxDifferencesIndex];
+            
+            isGoNextStep = false;
+            
         }
         
         
-        prePosition = position;
-        position = nextPosition;
-        triggerTime = ofGetElapsedTimef();
-        movingTime = 1;
+        if(isGoNextStep && isBlackToWhite){
+            
+        }
         
-    }
+        
+        
+        triggerTime = ofGetElapsedTimef();
+        movingTime = position.distance(prePosition)/UNIT_DISTANCE_PER_SECOND;
+        
+
+}
     
 #ifdef SIMULATION_VIEWER
     ofPushStyle();
     ofFill();
-    ofSetColor(255, 0, 0);
+    ofSetColor(0, 0, 255);
     
-    isBlack_goalImage ? ofFill() : ofNoFill();
+    //isBlack_goalImage ? ofFill() : ofNoFill();
+    plotValue == 1 ? ofNoFill() : ofFill();
     ofPushMatrix();
     ofTranslate(WIDTH, 0);
     ofDrawCircle(position, 10);
+    ofDrawCircle(prePosition, 5);
     ofPopMatrix();
     
-    isBlack_sandImage ? ofFill() : ofNoFill();
+    //isBlack_sandImage ? ofFill() : ofNoFill();
+    plotValue == 1 ? ofNoFill() : ofFill();
     ofPushMatrix();
     ofTranslate(WIDTH, HEIGHT);
     ofDrawCircle(position, 10);
+    ofDrawCircle(prePosition, 5);
     ofPopMatrix();
     
     ofPopStyle();

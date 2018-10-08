@@ -1,5 +1,4 @@
 #include "ofApp.h"
-#define DEBUG
 //--------------------------------------------------------------
 void ofApp::setup(){
     ofSetBackgroundColor(255);
@@ -7,7 +6,7 @@ void ofApp::setup(){
     ofEnableAlphaBlending();
     
     //osc
-    osc.setup("128.237.208.39", 12345);
+    isConnectedOSC = osc.setup("128.237.208.39", 12345);
     
     //plotter controller
     controller.init();
@@ -36,7 +35,7 @@ void ofApp::draw(){
         sendOscMessage(v); //*0.35
         plotValue = v;
     }
-
+    
     ofVec2f p = controller.getPosition();
     if(p != position && p.x >= 0 && p.y >= 0){
         sendOscMessage(p);
@@ -56,39 +55,43 @@ void ofApp::keyPressed(int key){
 }
 //--------------------------------------------------------------
 void ofApp::sendOscMessage(ofVec2f p){
-    ofxOscMessage msg;
-    msg.setAddress("/plotter/position/");
-    msg.addFloatArg(p.x);
-    msg.addFloatArg(p.y);
-    osc.sendMessage(msg);
+    if(isConnectedOSC){
+        ofxOscMessage msg;
+        msg.setAddress("/plotter/position/");
+        msg.addFloatArg(p.x);
+        msg.addFloatArg(p.y);
+        osc.sendMessage(msg);
 #ifdef DEBUG
-    cout << "OSC send : ";
-    cout << p << endl;
+        cout << "OSC send : ";
+        cout << p << endl;
 #endif
+    }
 }
 void ofApp::sendOscMessage(float value){
-    ofxOscMessage msg;
-    msg.setAddress("/plotter/plotvalue/");
-    msg.addFloatArg(value);
-    osc.sendMessage(msg);
+    if(isConnectedOSC){
+        ofxOscMessage msg;
+        msg.setAddress("/plotter/plotvalue/");
+        msg.addFloatArg(value);
+        osc.sendMessage(msg);
 #ifdef DEBUG
-    cout << "OSC send : ";
-    cout << value << endl;
+        cout << "OSC send : ";
+        cout << value << endl;
 #endif
+    }
 }
 //--------------------------------------------------------------
 void ofApp::keyReleased(int key){
-
+    
 }
 
 //--------------------------------------------------------------
 void ofApp::mouseMoved(int x, int y ){
-
+    
 }
 
 //--------------------------------------------------------------
 void ofApp::mouseDragged(int x, int y, int button){
-
+    
 }
 
 //--------------------------------------------------------------
@@ -98,30 +101,30 @@ void ofApp::mousePressed(int x, int y, int button){
 
 //--------------------------------------------------------------
 void ofApp::mouseReleased(int x, int y, int button){
-
+    
 }
 
 //--------------------------------------------------------------
 void ofApp::mouseEntered(int x, int y){
-
+    
 }
 
 //--------------------------------------------------------------
 void ofApp::mouseExited(int x, int y){
-
+    
 }
 
 //--------------------------------------------------------------
 void ofApp::windowResized(int w, int h){
-
+    
 }
 
 //--------------------------------------------------------------
 void ofApp::gotMessage(ofMessage msg){
-
+    
 }
 
 //--------------------------------------------------------------
 void ofApp::dragEvent(ofDragInfo dragInfo){ 
-
+    
 }

@@ -15,7 +15,7 @@
 
 //#define DEBUG
 //#define REALTIME_CAPTURE_PEOPLE
-#define REALTIME_CAPTURE_SAND
+//#define REALTIME_CAPTURE_SAND
 #define WIDTH 640
 #define HEIGHT 480
 #define CELL_SIZE 32 //2,4,8,10,16,20,32,40,50
@@ -34,12 +34,12 @@ private:
     void plotterValueCalcurator();
     void DrawingAlgorithm1();
     void DrawingAlgorithm2();
-    ofVec2f position, prePosition, direction; // control left right front back
+    ofVec2f position, prePosition, direction, moveToPosition; // control left right front back
     float plotValue, movingTime; //control up or down, the time while plotter moving to other place
     // plotValue: 1->down, 0->up
     float triggerTime; //the time that plotter start to move other place
     int drawingMode;
-    bool isUpdatePlotterX;
+    bool isUpdatePlotterX, isGoNextStep, isBlackToWhite;
     ofVec2f mouse;
     bool isMouseClicked;
     

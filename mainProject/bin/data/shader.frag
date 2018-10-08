@@ -76,7 +76,7 @@ void main(){
         destColor = max(destColor, 0.0);
         float grayColor = (destColor.r + destColor.g + destColor.b)/3.0;
         
-        if(grayColor < 0.2) grayColor = 1.0;
+        if(grayColor < 0.15) grayColor = 1.0;
         else grayColor = 0.0;
         color.rgb = vec3(grayColor);
             
