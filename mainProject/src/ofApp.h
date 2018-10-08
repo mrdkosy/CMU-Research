@@ -2,7 +2,7 @@
 
 #include "ofMain.h"
 #include "PlotterController.hpp"
-#include "ofxOscSender.h"
+
 
 //#define DEBUG
 
@@ -25,13 +25,7 @@ class ofApp : public ofBaseApp{
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);
     
-    void sendOscMessage(ofVec2f p);
-    void sendOscMessage(float value);
-    
-    ofxOscSender osc;
     PlotterController controller;
-    bool isConnectedOSC;
-    
     ofVec2f position;
     float plotValue;
 };

@@ -5,8 +5,6 @@ void ofApp::setup(){
     ofSetFrameRate(30);
     ofEnableAlphaBlending();
     
-    //osc
-    isConnectedOSC = osc.setup("128.237.208.39", 12345);
     
     //plotter controller
     controller.init();
@@ -29,18 +27,18 @@ void ofApp::draw(){
     //plotter controller
     controller.draw();
     
-    //osc
-    float v = controller.getPlotValue();
-    if(v != plotValue){
-        sendOscMessage(v); //*0.35
-        plotValue = v;
-    }
-    
-    ofVec2f p = controller.getPosition();
-    if(p != position && p.x >= 0 && p.y >= 0){
-        sendOscMessage(p);
-        position = p;
-    }
+//    //osc
+//    float v = controller.getPlotValue();
+//    if(v != plotValue){
+//        sendOscMessage(v); //*0.35
+//        plotValue = v;
+//    }
+//    
+//    ofVec2f p = controller.getPosition();
+//    if(p != position && p.x >= 0 && p.y >= 0){
+//        sendOscMessage(p);
+//        position = p;
+//    }
     
     
     
@@ -49,36 +47,11 @@ void ofApp::draw(){
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
     controller.keyPressed(key);
-    if(key == 'o'){
-        sendOscMessage(ofVec2f(0,0));
-    }
+//    if(key == 'o'){
+//        sendOscMessage(ofVec2f(0,0));
+//    }
 }
-//--------------------------------------------------------------
-void ofApp::sendOscMessage(ofVec2f p){
-    if(isConnectedOSC){
-        ofxOscMessage msg;
-        msg.setAddress("/plotter/position/");
-        msg.addFloatArg(p.x);
-        msg.addFloatArg(p.y);
-        osc.sendMessage(msg);
-#ifdef DEBUG
-        cout << "OSC send : ";
-        cout << p << endl;
-#endif
-    }
-}
-void ofApp::sendOscMessage(float value){
-    if(isConnectedOSC){
-        ofxOscMessage msg;
-        msg.setAddress("/plotter/plotvalue/");
-        msg.addFloatArg(value);
-        osc.sendMessage(msg);
-#ifdef DEBUG
-        cout << "OSC send : ";
-        cout << value << endl;
-#endif
-    }
-}
+
 //--------------------------------------------------------------
 void ofApp::keyReleased(int key){
     

@@ -10,6 +10,10 @@
 //--------------------------------------------------------------
 void PlotterController::init(){
     
+    //osc
+    isConnectedOSC = osc.setup("128.237.200.67", 12345);
+    
+    
     shader.load("", "shader.frag");
     position = ofVec2f(0,0);
     prePosition = ofVec2f(0,0);
@@ -99,8 +103,7 @@ void PlotterController::draw(){
     
     goalImageFbo.begin();
     ofClear(255);
-    //imageFilterShader(peopleFbo.getTexture(), true, 1, true, true);
-    imageFilterShader(peopleFbo.getTexture(), true, 2, false, true);
+    imageFilterShader(peopleFbo.getTexture(), true, 0, false, true);
     goalImageFbo.end();
     goalImageFbo.draw(0,0);
     
@@ -189,6 +192,8 @@ void PlotterController::keyPressed(int key){
     }
     if (key == 'c') resizePositions.clear();
     
+    if (key == 'o') sendOscMessage(ofVec2f(0,0));
+    
 }
 void PlotterController::mousePressed(int x, int y){
     mouse = ofVec2f(x,y);
@@ -240,6 +245,19 @@ void PlotterController::plotterPositionCalcurator(){
     }
     
     ofPopMatrix();
+    ofPushMatrix();
+    ofTranslate(WIDTH, 0);
+    
+    for (int x=0; x<(WIDTH/CELL_SIZE)+1; x++) {
+        ofDrawLine(x*CELL_SIZE, 0, x*CELL_SIZE, HEIGHT);
+    }
+    
+    for (int y=0; y<(HEIGHT/CELL_SIZE); y++) {
+        ofDrawLine(0, y*CELL_SIZE, WIDTH, y*CELL_SIZE);
+    }
+    
+    ofPopMatrix();
+    
     ofPopStyle();
 #endif
     
@@ -504,17 +522,73 @@ void PlotterController::DrawingAlgorithm1(){
 }
 //--------------------------------------------------------------
 void PlotterController::DrawingAlgorithm2(){
+    float t = (ofGetElapsedTimef() - triggerTime);
+    
+    
+    
+    
+#ifdef SIMULATION_VIEWER
+    ofPushStyle();
+    ofFill();
+    ofSetColor(0, 0, 255);
+    
+    //isBlack_goalImage ? ofFill() : ofNoFill();
+    //plotValue == 1 ? ofNoFill() : ofFill();
+    float x = ofMap(t, 0, movingTime, prePosition.x, position.x);
+    float y = ofMap(t, 0, movingTime, prePosition.y, position.y);
+    ofPushMatrix();
+    ofTranslate(WIDTH, 0);
+    plotValue == 1 ? ofNoFill() : ofFill();
+    ofDrawCircle(x, y, 10);
+    
+    isBlackToWhite ? ofFill() : ofNoFill();
+    ofDrawCircle(position.x, position.y, 7);
+    isBlackToWhite ? ofNoFill() : ofFill();
+    ofDrawCircle(moveToPosition, 3);
+    
+    ofPopMatrix();
+    
+    //isBlack_sandImage ? ofFill() : ofNoFill();
+    //plotValue == 1 ? ofNoFill() : ofFill();
+    ofPushMatrix();
+    ofTranslate(WIDTH, HEIGHT);
+    plotValue == 1 ? ofNoFill() : ofFill();
+    ofDrawCircle(x, y, 10);
+    
+    isBlackToWhite ? ofFill() : ofNoFill();
+    ofDrawCircle(position.x, position.y, 7);
+    isBlackToWhite ? ofNoFill() : ofFill();
+    ofDrawCircle(moveToPosition, 3);
+    
+    ofPopMatrix();
+    ofPopStyle();
+#endif
+    
+    
+    
     
     bool isBlack_goalImage = false, isBlack_sandImage = false;
     ofVec2f nextPosition;
     
-    float t = (ofGetElapsedTimef() - triggerTime);
+    
     if( (movingTime - t) <= 0){
         ofPixels gPixels, sPixels;
         goalImageFbo.getTexture().readToPixels(gPixels);
         cvSandImageFbo.getTexture().readToPixels(sPixels);
         
-        if(!isGoNextStep){
+        
+        if(isGoNextStep){
+            prePosition = position;
+            position = moveToPosition;
+            triggerTime = ofGetElapsedTimef();
+            movingTime = position.distance(prePosition)/UNIT_DISTANCE_PER_SECOND;
+            plotValue = 0;
+            sendOscMessage(plotValue);
+            sendOscMessage(position);
+            
+            isGoNextStep = false;
+            
+        }else{
             int i = 0;
             while(i < 100){ //loop until find bad cell(max is 100)
                 
@@ -552,104 +626,136 @@ void PlotterController::DrawingAlgorithm2(){
                 i++;
             }
             
-            prePosition = position;
-            position = nextPosition;
-            plotValue = 1; //down
-
-        }else{ //analyze the each color of up, down, right and left cell
             
-            
-            ofVec2f aroundPixels[4] = {
-                ofVec2f(0, - CELL_SIZE), //up
-                ofVec2f(CELL_SIZE, 0), //right
-                ofVec2f(0, CELL_SIZE), //down
-                ofVec2f(-CELL_SIZE, 0) //left
-            };
-            int aroundGoalColor[4] = {0, 0, 0, 0};
-            int aroundSandColor[4] = {0, 0, 0, 0};
-            
-            
-            int c = CELL_SIZE/2;
-            for(int y=-c; y<c; y++){
-                for(int x=-c; x<c; x++){
+            if(isGoNextStep){ //analyze the each color of up, down, right and left cell
+                
+                int loop=1;
+                while (loop<50) {
                     
-                    for(int i=0; i<4; i++){
-                        int _x = position.x + aroundPixels[i].x + x;
-                        int _y = position.y + aroundPixels[i].y+y;
-                        if(0 <= _x && _x < WIDTH && 0 <= _y && _y < HEIGHT){
-                            int _gColor = gPixels.getColor(_x, _y).r;
-                            int _sColor = sPixels.getColor(_x, _y).r;
+                    
+                    ofVec2f aroundPixels[8] = {
+                        ofVec2f(0, - CELL_SIZE*loop), //up
+                        ofVec2f(CELL_SIZE*loop, - CELL_SIZE*loop), //right up
+                        ofVec2f(CELL_SIZE*loop, 0), //right
+                        ofVec2f(CELL_SIZE*loop, CELL_SIZE*loop), //right down
+                        ofVec2f(0, CELL_SIZE*loop), //down
+                        ofVec2f(-CELL_SIZE*loop, CELL_SIZE*loop), //down left
+                        ofVec2f(-CELL_SIZE*loop, 0), //left
+                        ofVec2f(-CELL_SIZE*loop, - CELL_SIZE*loop) //left up
+                    };
+                    int aroundGoalColor[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+                    int aroundSandColor[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+                    
+                    //cout << "---------" << endl;
+                    int c = CELL_SIZE/2;
+                    for(int i=0; i<8; i++){
+                        for(int y=-c; y<c; y++){
+                            for(int x=-c; x<c; x++){
+                                
+                                int _x = nextPosition.x + aroundPixels[i].x + x;
+                                int _y = nextPosition.y + aroundPixels[i].y+y;
+                                if(0 <= _x && _x < WIDTH && 0 <= _y && _y < HEIGHT){
+                                    int _gColor = gPixels.getColor(_x, _y).r;
+                                    int _sColor = sPixels.getColor(_x, _y).r;
+                                    
+                                    int threshold = 0;
+                                    if(_gColor <= threshold) aroundGoalColor[i]++;
+                                    if(_sColor <= threshold) aroundSandColor[i]++;
+                                }
+                            }
                             
-                            int threshold = 0;
-                            if(_gColor <= threshold) aroundGoalColor[i]++;
-                            if(_sColor <= threshold) aroundSandColor[i]++;
+                        }
+                        //cout << "loop :" << loop << ", goal: " << aroundGoalColor[i] << " , real: " << aroundSandColor[i] << " , diff: " << aroundGoalColor[i] - aroundSandColor[i]<< endl;
+                    }
+                    
+                    
+                    //choose the different cell from goal image
+                    isBlack_goalImage ? isBlackToWhite = false : isBlackToWhite = true;
+                    
+                    
+                    int maxDifferencesIndex = 0;
+                    for(int i=1; i<8	; i++){
+                        int diff = aroundGoalColor[i] - aroundSandColor[i];
+                        int maxDiff = aroundGoalColor[maxDifferencesIndex] - aroundSandColor[maxDifferencesIndex];
+                        
+                        if( isBlackToWhite ){ //look for the white cell wants iron filings around nextPoint
+                            if( maxDiff < diff ) //most hungry cell
+                                maxDifferencesIndex = i;
+                        }else{ // lokk for the black cell wants to remove iron filings around nextPoint
+                            if(diff < maxDiff) maxDifferencesIndex = i;
                         }
                     }
                     
-                }
+                    
+                    int maxDiff = aroundGoalColor[maxDifferencesIndex] - aroundSandColor[maxDifferencesIndex];
+                    //cout << "maxDiff : " << maxDiff << endl; //!!!!!!!!!!
+                    
+                    
+                    if(isBlackToWhite){
+                        if(maxDiff > 0){
+                            prePosition = position;
+                            position = nextPosition;
+                            moveToPosition = nextPosition + aroundPixels[maxDifferencesIndex];
+                            break;
+                        }
+                    }else{
+                        if(maxDiff < 0){
+                            prePosition = position;
+                            position = nextPosition + aroundPixels[maxDifferencesIndex];
+                            moveToPosition = nextPosition;
+                            break;
+                        }
+                    }
+                    
+                    loop++;
+                } //end while
+                
+                
+                
+                triggerTime = ofGetElapsedTimef();
+                movingTime = position.distance(prePosition)/UNIT_DISTANCE_PER_SECOND;
+                
+                plotValue = 1;
+                sendOscMessage(plotValue);
+                sendOscMessage(position);
+                
             }
-            
-            //choose the different cell from goal image
-            int maxDifferencesIndex = 0;
-            for(int i=1; i<4; i++){
-                int diff = aroundGoalColor[i] - aroundSandColor[i];
-                int maxDiff = aroundGoalColor[maxDifferencesIndex] - aroundSandColor[maxDifferencesIndex];
-                if( !isBlack_goalImage ){ //look for the white cell wants iron filings around nextPoint
-                    if( maxDiff < diff ) maxDifferencesIndex = i;
-                }else{ // lokk for the black cell wants to remove iron filings around nextPoint
-                    if(diff < maxDiff) maxDifferencesIndex = i;
-                }
-            }
-            
-            int maxDiff = aroundGoalColor[maxDifferencesIndex] - aroundSandColor[maxDifferencesIndex];
-            cout << "maxDiff : " << maxDiff << endl; //!!!!!!!!!!
-            // if(abs(maxDiff))
-            
-            prePosition = position;
-            position = prePosition + aroundPixels[maxDifferencesIndex];
-            
-            isGoNextStep = false;
             
         }
         
         
-        if(isGoNextStep && isBlackToWhite){
-            
-        }
         
-        
-        
-        triggerTime = ofGetElapsedTimef();
-        movingTime = position.distance(prePosition)/UNIT_DISTANCE_PER_SECOND;
-        
-
+    }
+    
+    
 }
-    
-#ifdef SIMULATION_VIEWER
-    ofPushStyle();
-    ofFill();
-    ofSetColor(0, 0, 255);
-    
-    //isBlack_goalImage ? ofFill() : ofNoFill();
-    plotValue == 1 ? ofNoFill() : ofFill();
-    ofPushMatrix();
-    ofTranslate(WIDTH, 0);
-    ofDrawCircle(position, 10);
-    ofDrawCircle(prePosition, 5);
-    ofPopMatrix();
-    
-    //isBlack_sandImage ? ofFill() : ofNoFill();
-    plotValue == 1 ? ofNoFill() : ofFill();
-    ofPushMatrix();
-    ofTranslate(WIDTH, HEIGHT);
-    ofDrawCircle(position, 10);
-    ofDrawCircle(prePosition, 5);
-    ofPopMatrix();
-    
-    ofPopStyle();
+//--------------------------------------------------------------
+void PlotterController::sendOscMessage(ofVec2f p){
+    if(isConnectedOSC){
+        ofxOscMessage msg;
+        msg.setAddress("/plotter/position/");
+        msg.addFloatArg(p.x/WIDTH);
+        msg.addFloatArg(p.y/HEIGHT);
+        osc.sendMessage(msg);
+#ifdef DEBUG
+        cout << "OSC send : ";
+        cout << p << endl;
 #endif
+    }
 }
-
+void PlotterController::sendOscMessage(float value){
+    if(isConnectedOSC){
+        ofxOscMessage msg;
+        msg.setAddress("/plotter/plotvalue/");
+        msg.addFloatArg(value);
+        osc.sendMessage(msg);
+#ifdef DEBUG
+        cout << "OSC send : ";
+        cout << value << endl;
+#endif
+        ofSleepMillis(100);
+    }
+}
 
 
 
