@@ -4,7 +4,7 @@
 #include "PlotterController.hpp"
 
 
-//#define DEBUG
+#define DEBUG
 
 class ofApp : public ofBaseApp{
 

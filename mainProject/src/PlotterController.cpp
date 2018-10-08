@@ -192,7 +192,10 @@ void PlotterController::keyPressed(int key){
     }
     if (key == 'c') resizePositions.clear();
     
-    if (key == 'o') sendOscMessage(ofVec2f(0,0));
+    if (key == 'o'){
+        sendOscMessage(1);
+        sendOscMessage(ofVec2f(0,0));
+    }
     
 }
 void PlotterController::mousePressed(int x, int y){
@@ -532,10 +535,8 @@ void PlotterController::DrawingAlgorithm2(){
     ofFill();
     ofSetColor(0, 0, 255);
     
-    //isBlack_goalImage ? ofFill() : ofNoFill();
-    //plotValue == 1 ? ofNoFill() : ofFill();
-    float x = ofMap(t, 0, movingTime, prePosition.x, position.x);
-    float y = ofMap(t, 0, movingTime, prePosition.y, position.y);
+    float x = ofMap(MIN(t, movingTime), 0, movingTime, prePosition.x, position.x);
+    float y = ofMap(MIN(t, movingTime), 0, movingTime, prePosition.y, position.y);
     ofPushMatrix();
     ofTranslate(WIDTH, 0);
     plotValue == 1 ? ofNoFill() : ofFill();
@@ -548,8 +549,8 @@ void PlotterController::DrawingAlgorithm2(){
     
     ofPopMatrix();
     
-    //isBlack_sandImage ? ofFill() : ofNoFill();
-    //plotValue == 1 ? ofNoFill() : ofFill();
+
+    
     ofPushMatrix();
     ofTranslate(WIDTH, HEIGHT);
     plotValue == 1 ? ofNoFill() : ofFill();
@@ -559,6 +560,7 @@ void PlotterController::DrawingAlgorithm2(){
     ofDrawCircle(position.x, position.y, 7);
     isBlackToWhite ? ofNoFill() : ofFill();
     ofDrawCircle(moveToPosition, 3);
+    
     
     ofPopMatrix();
     ofPopStyle();
@@ -590,11 +592,18 @@ void PlotterController::DrawingAlgorithm2(){
             
         }else{
             int i = 0;
-            while(i < 100){ //loop until find bad cell(max is 100)
+            while(i < 50){ //loop until find bad cell(max is 100)
                 
                 int nx = int(ofRandom(WIDTH/CELL_SIZE + 1)) * CELL_SIZE;
                 int ny = int(ofRandom(HEIGHT/CELL_SIZE + 1)) * CELL_SIZE;
                 nextPosition = ofVec2f(nx, ny);
+                
+                
+                ofPushMatrix();
+                ofTranslate(WIDTH, HEIGHT);
+                ofSetColor(0, 100, 0);
+                ofDrawCircle(nextPosition, 10);
+                ofPopMatrix();
                 
                 
                 int c = CELL_SIZE/2;
@@ -614,13 +623,14 @@ void PlotterController::DrawingAlgorithm2(){
                 
                 //a certain threshold
                 if(gColor > 0) isBlack_goalImage = true; //!!!!!!!!!!
-                if(sColor > (CELL_SIZE*CELL_SIZE/3)) isBlack_sandImage = true; //!!!!!!!!!!
+                if(sColor > (CELL_SIZE*CELL_SIZE/3*2)) isBlack_sandImage = true; //!!!!!!!!!!
                 
                 
                 float _t = 0;
                 //the cell of sand picture is not good
                 if(isBlack_goalImage != isBlack_sandImage){
                     isGoNextStep = true;
+                    
                     break;
                 }
                 i++;
@@ -628,9 +638,10 @@ void PlotterController::DrawingAlgorithm2(){
             
             
             if(isGoNextStep){ //analyze the each color of up, down, right and left cell
-                
+                bool plotterMove = false;
                 int loop=1;
-                while (loop<50) {
+                
+                while (loop < 20) { //how many cells around here search
                     
                     
                     ofVec2f aroundPixels[8] = {
@@ -646,7 +657,6 @@ void PlotterController::DrawingAlgorithm2(){
                     int aroundGoalColor[8] = {0, 0, 0, 0, 0, 0, 0, 0};
                     int aroundSandColor[8] = {0, 0, 0, 0, 0, 0, 0, 0};
                     
-                    //cout << "---------" << endl;
                     int c = CELL_SIZE/2;
                     for(int i=0; i<8; i++){
                         for(int y=-c; y<c; y++){
@@ -665,7 +675,6 @@ void PlotterController::DrawingAlgorithm2(){
                             }
                             
                         }
-                        //cout << "loop :" << loop << ", goal: " << aroundGoalColor[i] << " , real: " << aroundSandColor[i] << " , diff: " << aroundGoalColor[i] - aroundSandColor[i]<< endl;
                     }
                     
                     
@@ -674,7 +683,7 @@ void PlotterController::DrawingAlgorithm2(){
                     
                     
                     int maxDifferencesIndex = 0;
-                    for(int i=1; i<8	; i++){
+                    for(int i=1; i<8; i++){
                         int diff = aroundGoalColor[i] - aroundSandColor[i];
                         int maxDiff = aroundGoalColor[maxDifferencesIndex] - aroundSandColor[maxDifferencesIndex];
                         
@@ -696,6 +705,7 @@ void PlotterController::DrawingAlgorithm2(){
                             prePosition = position;
                             position = nextPosition;
                             moveToPosition = nextPosition + aroundPixels[maxDifferencesIndex];
+                            plotterMove = true;
                             break;
                         }
                     }else{
@@ -703,6 +713,8 @@ void PlotterController::DrawingAlgorithm2(){
                             prePosition = position;
                             position = nextPosition + aroundPixels[maxDifferencesIndex];
                             moveToPosition = nextPosition;
+                            plotterMove = true;
+                            
                             break;
                         }
                     }
@@ -711,20 +723,21 @@ void PlotterController::DrawingAlgorithm2(){
                 } //end while
                 
                 
+                if(plotterMove){
+                    triggerTime = ofGetElapsedTimef();
+                    movingTime = position.distance(prePosition)/UNIT_DISTANCE_PER_SECOND;
+                    
+                    plotValue = 1;
+                    sendOscMessage(plotValue);
+                    sendOscMessage(position);
+                    isGoNextStep = true;
+                }else{
+                    isGoNextStep = false;
+                }
                 
-                triggerTime = ofGetElapsedTimef();
-                movingTime = position.distance(prePosition)/UNIT_DISTANCE_PER_SECOND;
-                
-                plotValue = 1;
-                sendOscMessage(plotValue);
-                sendOscMessage(position);
-                
-            }
+            }//end isNextStep
             
         }
-        
-        
-        
     }
     
     
