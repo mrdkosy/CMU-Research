@@ -23,8 +23,9 @@ boolean bFollowingMouse;
 
 float plotterX = 0, plotterY = 0;
 float plotterValue = 0;
+float mousePlotterValue = 0;
 
-boolean isOscControl = true;
+boolean isOscControl = false;
 
 void setup() {
   size(1000, 1000); 
@@ -60,12 +61,9 @@ void draw() {
         my = constrain(plotterY*100, 0, 100);
         text("Plotter is controlled by OSC", 20, 50);
       }else{
+        if(mousePressed)cnc.penUp(0);//cnc.penUp(mousePlotterValue);
+        else cnc.penUp(1);
         
-        if (mousePressed) {
-        cnc.penDown();
-      } else {
-        cnc.penUp(0);
-      }
         mx = constrain(mouseX/10.0, 0, 100);
         my = constrain(mouseY/10.0, 0, 100);
         text("Plotter is controlled by YOUR MOUSE", 20, 50);
@@ -109,6 +107,21 @@ void keyPressed() {
   if(key == 'o'){
      isOscControl = !isOscControl; 
   }
+  
+  if(!isOscControl){
+    if(key == 'q'){ //down
+      mousePlotterValue += 0.01;
+      mousePlotterValue = constrain(mousePlotterValue, 0, 1);
+      println(mousePlotterValue);
+    }
+    if(key == 'w'){ //up
+      mousePlotterValue -= 0.01;
+      mousePlotterValue = constrain(mousePlotterValue, 0, 1);
+      println(mousePlotterValue);
+      
+    }
+  }
+  
 }
 
 //=======================================
@@ -125,14 +138,16 @@ void stop() {
 }
 //=======================================
 void oscEvent(OscMessage msg) {
-  
-  if(msg.checkAddrPattern("/plotter/position/")==true) {
-    plotterX = msg.get(0).floatValue();
-    plotterY = msg.get(1).floatValue();
-    println("get OSC message : " + plotterX + ", " + plotterY); 
+  if(isOscControl){
+    if(msg.checkAddrPattern("/plotter/position/")==true) {
+      plotterX = msg.get(0).floatValue();
+      plotterY = msg.get(1).floatValue();
+      println("get OSC message : " + plotterX + ", " + plotterY); 
+    }
+    
+    if(msg.checkAddrPattern("/plotter/plotvalue/")==true) {
+      plotterValue = msg.get(0).floatValue();
+      println("get OSC message : " + plotterValue);
+    }    
   }
-  
-  if(msg.checkAddrPattern("/plotter/plotvalue/")==true) {
-    plotterValue = msg.get(0).intValue(); 
-  }    
 }
