@@ -28,23 +28,20 @@ class ComputerVision{
 private:
     OscController osc;
     ofVideoGrabber ironFilingsCamera, peopleCamera;
-    ofFbo realIronFilingsImage, cvIronFilingsImage, realPeopleImage, goalImage;
+    ofFbo cvIronFilingsImage, goalImage;
     ofImage peopleTestImage, ironfilingsTestImage;
     ofxCvGrayscaleImage grayIronFilingsImage, grayPeopleImage;
     ofxCvColorImage colorIronFilingsImage, colorPeopleImage;
-    ofPixels grayScaleIronFilingsPixels, grayScalePeoplePixels;
     
 //--------------------------------------------------------------
     void init(){
-        realIronFilingsImage.allocate(WIDTH_PROCESS, HEIGHT_PROCESS);
+
         cvIronFilingsImage.allocate(WIDTH_PROCESS, HEIGHT_PROCESS);
-        realPeopleImage.allocate(WIDTH_PROCESS, HEIGHT_PROCESS);
         goalImage.allocate(WIDTH_PROCESS, HEIGHT_PROCESS);
         grayIronFilingsImage.allocate(WIDTH_PROCESS, HEIGHT_PROCESS);
         grayPeopleImage.allocate(WIDTH_PROCESS, HEIGHT_PROCESS);
         colorIronFilingsImage.allocate(WIDTH_PROCESS, HEIGHT_PROCESS);
         colorPeopleImage.allocate(WIDTH_PROCESS, HEIGHT_PROCESS);
-        grayScalePeoplePixels.allocate(WIDTH_PROCESS, HEIGHT_PROCESS,OF_IMAGE_GRAYSCALE);
 
         
 #ifdef REALTIME_CAPTURE_PEOPLE
@@ -55,6 +52,7 @@ private:
         peopleTestImage.load("circle.png");
         peopleTestImage.resize(WIDTH_PROCESS, HEIGHT_PROCESS);
         peopleTestImage.setImageType(OF_IMAGE_COLOR);
+        colorPeopleImage = peopleTestImage;
 #endif
         
         
@@ -65,6 +63,9 @@ private:
         ironFilingsCamera.initGrabber(WIDTH_PROCESS, HEIGHT_PROCESS);
 #else
         ironfilingsTestImage.load("noise.png");
+        ironfilingsTestImage.resize(WIDTH_PROCESS, HEIGHT_PROCESS);
+        ironfilingsTestImage.setImageType(OF_IMAGE_COLOR);
+        colorIronFilingsImage = ironfilingsTestImage;
 #endif
     }
     
@@ -91,18 +92,11 @@ private:
          real people image
          *******************/
         
-        realPeopleImage.begin();
 #ifdef REALTIME_CAPTURE_PEOPLE
-        //peopleCamera.draw(0,0);
         colorPeopleImage.setFromPixels(peopleCamera.getPixels());
-
-#else
-        colorPeopleImage = peopleTestImage;
-        //peopleTestImage.draw(0, 0, WIDTH_PROCESS, HEIGHT_PROCESS);
 #endif
-        colorPeopleImage.draw(0,0);
-        realPeopleImage.end();
-        realPeopleImage.draw(0,0, WIDTH_VIEW, HEIGHT_VIEW);
+        colorPeopleImage.draw(0,0, WIDTH_VIEW, HEIGHT_VIEW);
+        drawText("real image of people from camera");
         
         
         /*******************
@@ -116,6 +110,8 @@ private:
         ofPushMatrix();
         ofTranslate(WIDTH_VIEW, 0);
         goalImage.draw(0, 0, WIDTH_VIEW, HEIGHT_VIEW);
+        drawText("grayscale image of people from camera");
+
         ofPopMatrix();
         
         
@@ -130,27 +126,40 @@ private:
          real iron filings condition
          *******************/
 
-        realIronFilingsImage.begin();
 #ifdef REALTIME_CAPTURE_IRONFILINGS
-        ironFilingsCamera.draw(0,0);
-#else
-        ironfilingsTestImage.draw(0,0, WIDTH_PROCESS, HEIGHT_PROCESS);
+        colorIronFilingsImage.setFromPixels(ironfilingsCamera.getPixels());
 #endif
-        realIronFilingsImage.end();
-        
         ofPushMatrix();
         ofTranslate(0, HEIGHT_VIEW);
-        realIronFilingsImage.draw(0,0,WIDTH_VIEW, HEIGHT_VIEW);
+        colorIronFilingsImage.draw(0,0,WIDTH_VIEW, HEIGHT_VIEW);
+        drawText("real image of iron filings from camera");
+
         ofPopMatrix();
         
         
         /*******************
          cv iron filings
          *******************/
+        cvIronFilingsImage.begin();
+        grayIronFilingsImage = colorIronFilingsImage;
+        grayIronFilingsImage.draw(0,0);
+        cvIronFilingsImage.end();
+        
+        ofPushMatrix();
+        ofTranslate(WIDTH_VIEW, HEIGHT_VIEW);
+        cvIronFilingsImage.draw(0, 0, WIDTH_VIEW, HEIGHT_VIEW);
+        drawText("cv image of iron filings");
+
+        ofPopMatrix();
 
     }
     
-    
+//--------------------------------------------------------------
+    void drawText(string st){
+        ofDrawBitmapStringHighlight(st,ofVec2f(10,20), ofColor(170, 0, 0), ofColor(255));
+
+    }
+//--------------------------------------------------------------
 //--------------------------------------------------------------
 public:
     ComputerVision(){
@@ -161,6 +170,7 @@ public:
     void draw(){
         update();
         
+    
         drawPeople();
         drawIronFilings();
     }
