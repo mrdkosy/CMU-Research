@@ -39,6 +39,7 @@ private:
     vector<int> cellColor;
     ofVec2f plotterPosition; //plotter position
     bool plotterUp; //plotter stick iron filings or not
+    int howHungryPerCell[5] = {0,0,0,0,0};
     
     //--------------------------------------------------------------
     void init(){
@@ -164,6 +165,7 @@ private:
         ofTranslate(WIDTH_VIEW, HEIGHT_VIEW);
         realIronFilingsImage.draw(0, 0, WIDTH_VIEW, HEIGHT_VIEW);
         drawGrid();
+        drawPlotterInformation();
         drawCellColor();
         drawText("cv image of iron filings");
         ofPopMatrix();
@@ -216,9 +218,43 @@ private:
         goal.readToPixels(goalPixels);
         real.readToPixels(realPixels);
         
-        int x = ofRandom(WIDTH_PROCESS/CELL)*CELL;
-        int y = ofRandom(HEIGHT_PROCESS/CELL)*CELL;
-        ofVec2f nextPosition = ofVec2f(x,y);
+        int nx = floor(ofRandom(WIDTH_PROCESS/CELL))*CELL;
+        int ny = floor(ofRandom(HEIGHT_PROCESS/CELL))*CELL;
+        const ofVec2f nextPosition = ofVec2f(nx,ny);
+        
+        ofVec2f aroundCells[5] = {
+            ofVec2f(0,0), //center
+            ofVec2f(0,-1), //up
+            ofVec2f(1,0), //right
+            ofVec2f(0,1), //down
+            ofVec2f(-1,0) //left
+        };
+        
+        int goalGrayScalePerCell[5] = {0, 0, 0, 0, 0};
+        int realGrayScalePerCell[5] = {0, 0, 0, 0, 0};
+
+        
+        for(int i=0; i<5; i++){ //check all cell
+            for(int y=0; y<CELL; y++){
+                for(int x=0; x<CELL; x++){
+                    int px = nextPosition.x + aroundCells[i].x*CELL + x;
+                    int py = nextPosition.y + aroundCells[i].y*CELL + y;
+                    goalGrayScalePerCell[i] += 255 - goalPixels.getColor(px, py).r;
+                    realGrayScalePerCell[i] += 255 - realPixels.getColor(px, py).r;
+                }
+            }
+            howHungryPerCell[i] = goalGrayScalePerCell[i] - realGrayScalePerCell[i];
+        }
+        
+        plotterPosition = nextPosition + ofVec2f(CELL/2, CELL/2);
+        
+    }
+    //--------------------------------------------------------------
+    void drawPlotterInformation(){
+        ofPushStyle();
+        ofSetColor(0, 180, 0);
+        ofDrawCircle(plotterPosition.x, plotterPosition.y, 10);
+        ofPopStyle();
         
     }
     //--------------------------------------------------------------
@@ -253,7 +289,6 @@ public:
     //--------------------------------------------------------------
     void draw(){
         update();
-        
         
         drawPeople();
         drawIronFilings();
