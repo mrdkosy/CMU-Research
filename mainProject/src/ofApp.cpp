@@ -18,6 +18,7 @@ void ofApp::draw(){
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
+    cv.keyPressed(key);
 }
 
 //--------------------------------------------------------------
@@ -37,6 +38,7 @@ void ofApp::mouseDragged(int x, int y, int button){
 
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button){
+    cv.mousePressed(x,y);
 }
 
 //--------------------------------------------------------------
