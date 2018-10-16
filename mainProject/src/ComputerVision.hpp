@@ -23,8 +23,22 @@
 #define UNIT_DISRANCE_PER_SECOND (WIDTH_PROCESS/10)
 #define CELL 32 //2,4,8,10,16,20,32,40,50
 
+class TimeManager{
+    float startTime = 0;
+    float timeLimit = 0;
+public:
+    void start(float t){
+        startTime = ofGetElapsedTimef();
+        timeLimit = t;
+        cout << "set time : left -> " << timeLimit << endl;
+    }
+    float getLeftTime(){
+        return MAX(0, timeLimit - (ofGetElapsedTimef() - startTime));
+    }
+};
 
 class ComputerVision{
+    
     
 private:
     OscController osc;
@@ -37,9 +51,10 @@ private:
     bool isTrimmingMode;
     vector<ofVec2f> trimmedPosition;
     vector<int> cellColor;
-    ofVec2f plotterPosition; //plotter position
+    ofVec2f plotterPosition, moveToPosition; //plotter position
     bool plotterUp; //plotter stick iron filings or not
     int howHungryPerCell[5] = {0,0,0,0,0};
+    TimeManager timeManager;
     
     //--------------------------------------------------------------
     void init(){
@@ -58,7 +73,7 @@ private:
         peopleCamera.setDeviceID(0);
         peopleCamera.initGrabber(WIDTH_PROCESS, HEIGHT_PROCESS);
 #else
-        peopleTestImage.load("circle.png");
+        peopleTestImage.load("mountain.png");
         peopleTestImage.resize(WIDTH_PROCESS, HEIGHT_PROCESS);
         peopleTestImage.setImageType(OF_IMAGE_COLOR);
         colorPeopleImage = peopleTestImage;
@@ -84,7 +99,8 @@ private:
         trimmedPosition.clear();
         
         //plotter
-        plotterPosition = ofVec2f(0,0);
+        plotterPosition = ofVec2f(CELL/2,CELL/2);
+        moveToPosition = plotterPosition;
         plotterUp = false;
         osc.reset();
         
@@ -99,6 +115,9 @@ private:
         ironFilingsCamera.update();
 #endif
         
+        if(timeManager.getLeftTime() == 0){
+            
+        }
     }
     
     //--------------------------------------------------------------
@@ -126,6 +145,7 @@ private:
         ofPushMatrix();
         ofTranslate(WIDTH_VIEW, 0);
         goalImage.draw(0, 0, WIDTH_VIEW, HEIGHT_VIEW);
+        drawPlotterInformation();
         drawText("grayscale image of people from camera");
         
         ofPopMatrix();
@@ -214,13 +234,58 @@ private:
     //--------------------------------------------------------------
     void calculateImageColor(ofTexture& goal, ofTexture& real){
         
-        ofPixels goalPixels, realPixels;
-        goal.readToPixels(goalPixels);
-        real.readToPixels(realPixels);
+        if(plotterPosition == moveToPosition){ //caluculate next position
+            const ofVec2f nowPosition = plotterPosition;
+            
+            ofPixels goalPixels, realPixels;
+            goal.readToPixels(goalPixels);
+            real.readToPixels(realPixels);
+            
+            int nx = floor(ofRandom(WIDTH_PROCESS/CELL))*CELL;
+            int ny = floor(ofRandom(HEIGHT_PROCESS/CELL))*CELL;
+            const ofVec2f nextPosition = ofVec2f(nx,ny);
+            
+            ofVec2f aroundCells[5] = {
+                ofVec2f(0,0), //center
+                ofVec2f(0,-1), //up
+                ofVec2f(1,0), //right
+                ofVec2f(0,1), //down
+                ofVec2f(-1,0) //left
+            };
+            
+            int goalGrayScalePerCell[5] = {0, 0, 0, 0, 0};
+            int realGrayScalePerCell[5] = {0, 0, 0, 0, 0};
+            
+            
+            for(int i=0; i<5; i++){ //check all cell
+                for(int y=0; y<CELL; y++){
+                    for(int x=0; x<CELL; x++){
+                        int px = nextPosition.x + aroundCells[i].x*CELL + x;
+                        int py = nextPosition.y + aroundCells[i].y*CELL + y;
+                        goalGrayScalePerCell[i] += 255 - goalPixels.getColor(px, py).r;
+                        realGrayScalePerCell[i] += 255 - realPixels.getColor(px, py).r;
+                    }
+                }
+                howHungryPerCell[i] = (goalGrayScalePerCell[i] - realGrayScalePerCell[i])/(float)(CELL*CELL);
+            }
+            
+            plotterPosition = nextPosition + ofVec2f(CELL/2, CELL/2);
+            
+            
+            float dist = nextPosition.distance(nowPosition);
+            timeManager.start(dist/(float)UNIT_DISRANCE_PER_SECOND);
+            
+        }else{ //plotter move to "moveToPosition"
+            
+        }
         
-        int nx = floor(ofRandom(WIDTH_PROCESS/CELL))*CELL;
-        int ny = floor(ofRandom(HEIGHT_PROCESS/CELL))*CELL;
-        const ofVec2f nextPosition = ofVec2f(nx,ny);
+    }
+    //--------------------------------------------------------------
+    void drawPlotterInformation(){
+        ofPushStyle();
+        ofSetColor(0, 180, 0);
+        plotterUp == true ? ofFill() : ofNoFill();
+        ofDrawCircle(plotterPosition.x, plotterPosition.y, 10);
         
         ofVec2f aroundCells[5] = {
             ofVec2f(0,0), //center
@@ -229,36 +294,17 @@ private:
             ofVec2f(0,1), //down
             ofVec2f(-1,0) //left
         };
-        
-        int goalGrayScalePerCell[5] = {0, 0, 0, 0, 0};
-        int realGrayScalePerCell[5] = {0, 0, 0, 0, 0};
-
-        
-        for(int i=0; i<5; i++){ //check all cell
-            for(int y=0; y<CELL; y++){
-                for(int x=0; x<CELL; x++){
-                    int px = nextPosition.x + aroundCells[i].x*CELL + x;
-                    int py = nextPosition.y + aroundCells[i].y*CELL + y;
-                    goalGrayScalePerCell[i] += 255 - goalPixels.getColor(px, py).r;
-                    realGrayScalePerCell[i] += 255 - realPixels.getColor(px, py).r;
-                }
-            }
-            howHungryPerCell[i] = goalGrayScalePerCell[i] - realGrayScalePerCell[i];
+        for(int i=0; i<5; i++){
+            ofDrawBitmapStringHighlight(ofToString(howHungryPerCell[i]),
+                                        plotterPosition + aroundCells[i]*40 + ofVec2f(-15, 6),
+                                        ofColor(0,100), ofColor(255));
         }
-        
-        plotterPosition = nextPosition + ofVec2f(CELL/2, CELL/2);
-        
-    }
-    //--------------------------------------------------------------
-    void drawPlotterInformation(){
-        ofPushStyle();
-        ofSetColor(0, 180, 0);
-        ofDrawCircle(plotterPosition.x, plotterPosition.y, 10);
         ofPopStyle();
         
     }
     //--------------------------------------------------------------
     void drawText(string st){
+        
         ofDrawBitmapStringHighlight(st,ofVec2f(10,20), ofColor(170, 0, 0), ofColor(255));
     }
     //--------------------------------------------------------------
@@ -331,3 +377,8 @@ public:
     
 };
 #endif /* ComputerVision_hpp */
+
+
+
+
+
