@@ -8,7 +8,7 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 void ofApp::update(){
-    //if(ofGetFrameNum() % 30 == 0) cout << ofGetFrameRate() << endl;
+    if(ofGetFrameNum() % 60 == 0) cout << ofGetFrameRate() << endl;
 }
 
 //--------------------------------------------------------------

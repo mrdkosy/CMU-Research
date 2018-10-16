@@ -21,7 +21,7 @@
 #define WIDTH_VIEW 640
 #define HEIGHT_VIEW ((float)HEIGHT_PROCESS/WIDTH_PROCESS)*WIDTH_VIEW
 #define UNIT_DISRANCE_PER_SECOND (WIDTH_PROCESS/10)
-#define CELL 20 //2,4,8,10,16,20,32,40,50
+#define CELL 32 //2,4,8,10,16,20,32,40,50
 
 
 class ComputerVision{
@@ -29,18 +29,21 @@ class ComputerVision{
 private:
     OscController osc;
     ofVideoGrabber ironFilingsCamera, peopleCamera;
-    ofFbo cvIronFilingsImage, goalImage;
+    ofFbo realIronFilingsImage, goalImage;
     ofImage peopleTestImage, ironfilingsTestImage;
     ofxCvGrayscaleImage grayIronFilingsImage, grayPeopleImage;
     ofxCvColorImage colorIronFilingsImage, colorPeopleImage, trimmedIronFilingsImage;
     ofRectangle trimmedArea; //trimming the image from iron filings camera
     bool isTrimmingMode;
     vector<ofVec2f> trimmedPosition;
+    vector<int> cellColor;
+    ofVec2f plotterPosition; //plotter position
+    bool plotterUp; //plotter stick iron filings or not
     
     //--------------------------------------------------------------
     void init(){
         
-        cvIronFilingsImage.allocate(WIDTH_PROCESS, HEIGHT_PROCESS);
+        realIronFilingsImage.allocate(WIDTH_PROCESS, HEIGHT_PROCESS);
         goalImage.allocate(WIDTH_PROCESS, HEIGHT_PROCESS);
         grayIronFilingsImage.allocate(WIDTH_PROCESS, HEIGHT_PROCESS);
         grayPeopleImage.allocate(WIDTH_PROCESS, HEIGHT_PROCESS);
@@ -78,17 +81,23 @@ private:
     void setup(){
         isTrimmingMode = false;
         trimmedPosition.clear();
+        
+        //plotter
+        plotterPosition = ofVec2f(0,0);
+        plotterUp = false;
+        osc.reset();
+        
     }
     //--------------------------------------------------------------
     void update(){
 #ifdef REALTIME_CAPTURE_PEOPLE
         peopleCamera.update();
-        
 #endif
         
 #ifdef REALTIME_CAPTURE_IRONFILINGS
         ironFilingsCamera.update();
 #endif
+        
     }
     
     //--------------------------------------------------------------
@@ -121,7 +130,6 @@ private:
         ofPopMatrix();
         
         
-        
     }
     
     //--------------------------------------------------------------
@@ -146,16 +154,17 @@ private:
         /*******************
          cv iron filings
          *******************/
-        cvIronFilingsImage.begin();
+        realIronFilingsImage.begin();
         if(trimmedArea.isEmpty() || isTrimmingMode) grayIronFilingsImage = colorIronFilingsImage;
         else grayIronFilingsImage = trimmedIronFilingsImage;
         grayIronFilingsImage.draw(0,0);
-        cvIronFilingsImage.end();
+        realIronFilingsImage.end();
         
         ofPushMatrix();
         ofTranslate(WIDTH_VIEW, HEIGHT_VIEW);
-        cvIronFilingsImage.draw(0, 0, WIDTH_VIEW, HEIGHT_VIEW);
-        //drawGrid();
+        realIronFilingsImage.draw(0, 0, WIDTH_VIEW, HEIGHT_VIEW);
+        drawGrid();
+        drawCellColor();
         drawText("cv image of iron filings");
         ofPopMatrix();
         
@@ -189,7 +198,7 @@ private:
         else{
             ofSetColor(255, 255);
             if(trimmedArea.isEmpty()){ // don't set the trimming area yet
-                cvIronFilingsImage.draw(0, 0, WIDTH_VIEW, HEIGHT_VIEW);
+                realIronFilingsImage.draw(0, 0, WIDTH_VIEW, HEIGHT_VIEW);
             }else{
                 trimmedIronFilingsImage = colorIronFilingsImage;
                 trimmedIronFilingsImage.setROI(trimmedArea);
@@ -199,6 +208,18 @@ private:
             
         }
         ofPopStyle();
+    }
+    //--------------------------------------------------------------
+    void calculateImageColor(ofTexture& goal, ofTexture& real){
+        
+        ofPixels goalPixels, realPixels;
+        goal.readToPixels(goalPixels);
+        real.readToPixels(realPixels);
+        
+        int x = ofRandom(WIDTH_PROCESS/CELL)*CELL;
+        int y = ofRandom(HEIGHT_PROCESS/CELL)*CELL;
+        ofVec2f nextPosition = ofVec2f(x,y);
+        
     }
     //--------------------------------------------------------------
     void drawText(string st){
@@ -217,6 +238,11 @@ private:
         }
         ofPopStyle();
         
+    }
+    //--------------------------------------------------------------
+    void drawCellColor(){
+        ofPushStyle();
+        ofPopStyle();
     }
     //--------------------------------------------------------------
 public:
@@ -242,6 +268,7 @@ public:
                 trimmedArea.setSize(0,0);
             }
         }
+        if(key == 'n') calculateImageColor(goalImage.getTexture(), realIronFilingsImage.getTexture());
     }
     //--------------------------------------------------------------
     void mousePressed(int x, int y){
@@ -265,7 +292,6 @@ public:
                 trimmedArea.setSize(_w, _h);
             }
         }
-        
     }
     
 };

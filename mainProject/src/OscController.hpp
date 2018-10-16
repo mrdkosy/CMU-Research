@@ -28,7 +28,7 @@ public:
         isConnected = osc.setup(IP, PORT);
     }
     
-    void OscSend(ofVec2f position){
+    void send(ofVec2f position){
         if(isConnected){
             ofxOscMessage m;
             m.setAddress("/plotter/position/");
@@ -38,12 +38,19 @@ public:
         }
         
     }
-    void OscSend(float value){
+    void send(float value){
         if(isConnected){
             ofxOscMessage m;
             m.setAddress("/plotter/plotvalue/");
-            m.addFloatArg(value);
+            m.addFloatArg(1-value);
             osc.sendMessage(m);
+        }
+    }
+    
+    void reset(){
+        if(isConnected){
+            send(ofVec2f(0,0));
+            send(0);
         }
     }
     
