@@ -24,7 +24,7 @@
 #define CELL 25 //2,4,8,10,16,20,32,40,50
 #define RANGE_SEARCH_CELL 10
 #define NUM_CELLS_AROUND_TARGET 9 //5 or 9
-#define HOW_TINY 4 //min:2 max:cell
+#define HOW_TINY 0 //min:2 max:cell 0:just center
 
 class TimeManager{
     float startTime = 0;
@@ -197,7 +197,6 @@ private:
         drawGrid();
         drawPlotterInformation();
         if(isColorDebugMode) searchColorByMouse();
-        drawCellColor();
         drawText("cv image of iron filings");
         ofPopMatrix();
         
@@ -384,8 +383,10 @@ private:
                         ofVec2f direction = moveToSecond - moveToFirst;
                         direction.x = ofSign(direction.x);
                         direction.y = ofSign(direction.y);
-                        moveToSecond -= direction*ofVec2f(CELL/(float)HOW_TINY, CELL/(float)HOW_TINY);
-                        moveToFirst += direction*ofVec2f(CELL/(float)HOW_TINY, CELL/(float)HOW_TINY);
+                        if( HOW_TINY != 0 ){
+                            moveToSecond -= direction*ofVec2f(CELL/(float)HOW_TINY, CELL/(float)HOW_TINY);
+                            moveToFirst += direction*ofVec2f(CELL/(float)HOW_TINY, CELL/(float)HOW_TINY);
+                        }
                     }
                     
                 }else{ isBreakWhile = true; }
@@ -419,6 +420,18 @@ private:
             timeManager.start(dist/(float)UNIT_DISRANCE_PER_SECOND);
             
             moveToFirst = moveToSecond;
+        }
+    }
+    //--------------------------------------------------------------
+    ofVec2f judgeEdgeCell(ofVec2f cell){ // cell is plotterPosition
+        cell -= ofVec2f(CELL/2, CELL/2);
+        
+        for(int y=0; y<HEIGHT_PROCESS; y+=CELL){
+            for(int x=0; x<WIDTH_PROCESS; x+=CELL){
+                for(int i=0; i<CELL; i++){
+                    
+                }
+            }
         }
     }
     //--------------------------------------------------------------
@@ -467,11 +480,6 @@ private:
         }
         ofPopStyle();
         
-    }
-    //--------------------------------------------------------------
-    void drawCellColor(){
-        ofPushStyle();
-        ofPopStyle();
     }
     //--------------------------------------------------------------
 public:
