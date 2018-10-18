@@ -22,7 +22,7 @@
 #define HEIGHT_VIEW ((float)HEIGHT_PROCESS/WIDTH_PROCESS)*WIDTH_VIEW
 #define UNIT_DISRANCE_PER_SECOND (WIDTH_PROCESS/8.5)
 #define CELL 25 //2,4,8,10,16,20,32,40,50
-#define RANGE_SEARCH_CELL 5 
+#define RANGE_SEARCH_CELL 1
 #define NUM_CELLS_AROUND_TARGET 5 //5 or 9
 #define HOW_TINY 4 //min:2 max:cell 0:just center
 
@@ -124,8 +124,10 @@ private:
 #endif
         if( (!isTrimmingMode)&&(!isColorDebugMode) && (!isCalibrationMode)){
             if(timeManager.getLeftTime() == 0){
-                int nx = floor(ofRandom(WIDTH_PROCESS/CELL))*CELL;
-                int ny = floor(ofRandom(HEIGHT_PROCESS/CELL))*CELL;
+//                int nx = floor(ofRandom(WIDTH_PROCESS/CELL))*CELL;
+//                int ny = floor(ofRandom(HEIGHT_PROCESS/CELL))*CELL;
+                int nx = ofRandom(WIDTH_PROCESS);
+                int ny = ofRandom(HEIGHT_PROCESS);
                 callCalculateImageColor(ofVec2f(nx, ny));
             }
         }
@@ -150,6 +152,7 @@ private:
          *******************/
         goalImage.begin();
         grayPeopleImage = colorPeopleImage;
+        grayPeopleImage.contrastStretch();
         grayPeopleImage.draw(0,0);
         goalImage.end();
         
@@ -514,6 +517,14 @@ public:
         if(key == 'd') isColorDebugMode = !isColorDebugMode;
         if(key == 'a') isCalibrationMode = !isCalibrationMode;
         
+        if(key == 's'){
+            ofPixels pixels;
+            pixels = colorIronFilingsImage.getPixels();
+            string name = ofToString(ofGetFrameNum());
+            name += ".png";
+            ofSaveImage(pixels, name);
+        }
+        
     }
     //--------------------------------------------------------------
     void mousePressed(int x, int y){
@@ -546,8 +557,8 @@ public:
             int mx = x - WIDTH_VIEW;
             int my = y - HEIGHT_VIEW;
             if(0 <= mx && mx < WIDTH_VIEW && 0 <= my && my < HEIGHT_VIEW){
-                mx = floor(mx/CELL)*CELL;
-                my = floor(my/CELL)*CELL;
+                //mx = floor(mx/CELL)*CELL;
+                //my = floor(my/CELL)*CELL;
                 moveToFirst = moveToSecond;
                 callCalculateImageColor(ofVec2f(mx, my));
             }
