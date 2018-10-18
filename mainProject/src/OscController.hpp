@@ -15,7 +15,7 @@
 
 //#define DEBUG
 
-#define IP "128.237.166.12"
+#define IP "128.237.179.22"
 #define PORT 12345
 
 class OscController
@@ -49,6 +49,7 @@ public:
             m.setAddress("/plotter/plotvalue/");
             m.addFloatArg(1-value);
             osc.sendMessage(m);
+            ofSleepMillis(500);
 #ifdef DEBUG
             cout << "osc send : " << value << endl;
 #endif

@@ -22,9 +22,9 @@
 #define HEIGHT_VIEW ((float)HEIGHT_PROCESS/WIDTH_PROCESS)*WIDTH_VIEW
 #define UNIT_DISRANCE_PER_SECOND (WIDTH_PROCESS/8.5)
 #define CELL 25 //2,4,8,10,16,20,32,40,50
-#define RANGE_SEARCH_CELL 10
-#define NUM_CELLS_AROUND_TARGET 9 //5 or 9
-#define HOW_TINY 0 //min:2 max:cell 0:just center
+#define RANGE_SEARCH_CELL 5 
+#define NUM_CELLS_AROUND_TARGET 5 //5 or 9
+#define HOW_TINY 4 //min:2 max:cell 0:just center
 
 class TimeManager{
     float startTime = 0;
@@ -59,6 +59,7 @@ private:
     int howHungryPerCell[9] = {0,0,0,0,0,0,0,0,0};
     TimeManager timeManager;
     bool isColorDebugMode = false; //you can search the color by your mouse
+    bool isCalibrationMode; //calibration
     
     //--------------------------------------------------------------
     void init(){
@@ -77,7 +78,7 @@ private:
         peopleCamera.setDeviceID(0);
         peopleCamera.initGrabber(WIDTH_PROCESS, HEIGHT_PROCESS);
 #else
-        peopleTestImage.load("gradient.png");
+        peopleTestImage.load("mountain.png");
         peopleTestImage.resize(WIDTH_PROCESS, HEIGHT_PROCESS);
         peopleTestImage.setImageType(OF_IMAGE_COLOR);
         colorPeopleImage = peopleTestImage;
@@ -102,6 +103,7 @@ private:
         isTrimmingMode = true;
         trimmedPosition.clear();
         isColorDebugMode = false;
+        isCalibrationMode = false;
         
         //plotter
         plotterPosition = ofVec2f(CELL/2,CELL/2);
@@ -120,7 +122,7 @@ private:
 #ifdef REALTIME_CAPTURE_IRONFILINGS
         ironFilingsCamera.update();
 #endif
-        if( (!isTrimmingMode)&&(!isColorDebugMode) ){
+        if( (!isTrimmingMode)&&(!isColorDebugMode) && (!isCalibrationMode)){
             if(timeManager.getLeftTime() == 0){
                 int nx = floor(ofRandom(WIDTH_PROCESS/CELL))*CELL;
                 int ny = floor(ofRandom(HEIGHT_PROCESS/CELL))*CELL;
@@ -196,7 +198,7 @@ private:
         realIronFilingsImage.draw(0, 0, WIDTH_VIEW, HEIGHT_VIEW);
         drawGrid();
         drawPlotterInformation();
-        if(isColorDebugMode) searchColorByMouse();
+        if(isColorDebugMode || isCalibrationMode) searchColorByMouse();
         drawText("cv image of iron filings");
         ofPopMatrix();
         
@@ -207,8 +209,13 @@ private:
         
         ofSetColor(0, 100);
         ofDrawRectangle(0,0,WIDTH_VIEW, HEIGHT_VIEW);
+        ofSetColor(255, 255);
         
-        ofPopStyle();
+        if(isColorDebugMode)
+            ofDrawBitmapString("you can search the cell color by your mouse", 180, HEIGHT_VIEW/2);
+        if(isCalibrationMode)
+            ofDrawBitmapString("calibraion mode", 180, HEIGHT_VIEW/2);
+            ofPopStyle();
     }
     //--------------------------------------------------------------
     void trimImage(){
@@ -397,7 +404,6 @@ private:
                     if(!isChangeNextPoint){
                         plotterUp = false;
                         osc.send(0);
-                        ofSleepMillis(500);
                         osc.send(moveToFirst/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
                         float dist = moveToFirst.distance(nowPosition);
                         timeManager.start(dist/(float)UNIT_DISRANCE_PER_SECOND);
@@ -412,7 +418,6 @@ private:
             
             plotterUp = true;
             osc.send(1);
-            ofSleepMillis(500);
             osc.send(moveToSecond/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
             
             
@@ -507,6 +512,7 @@ public:
         //if(key == 'n') CalculateImageColor(goalImage.getTexture(), realIronFilingsImage.getTexture());
         if(key == 'r') osc.reset();
         if(key == 'd') isColorDebugMode = !isColorDebugMode;
+        if(key == 'a') isCalibrationMode = !isCalibrationMode;
         
     }
     //--------------------------------------------------------------
@@ -544,6 +550,15 @@ public:
                 my = floor(my/CELL)*CELL;
                 moveToFirst = moveToSecond;
                 callCalculateImageColor(ofVec2f(mx, my));
+            }
+        }
+        if(isCalibrationMode){
+            int mx = x - WIDTH_VIEW;
+            int my = y - HEIGHT_VIEW;
+            if(0 <= mx && mx < WIDTH_VIEW && 0 <= my && my < HEIGHT_VIEW){
+                osc.send(1);
+                osc.send(ofVec2f(mx, my));
+                
             }
         }
     }
