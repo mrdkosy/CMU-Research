@@ -13,7 +13,9 @@
 #include "ofMain.h"
 #include "ofxOscSender.h"
 
-#define IP "128.237.198.71"
+//#define DEBUG
+
+#define IP "128.237.166.12"
 #define PORT 12345
 
 class OscController
@@ -35,6 +37,9 @@ public:
             m.addFloatArg(position.x);
             m.addFloatArg(position.y);
             osc.sendMessage(m);
+#ifdef DEBUG
+            cout << "osc send : " << position << endl;
+#endif
         }
         
     }
@@ -44,13 +49,16 @@ public:
             m.setAddress("/plotter/plotvalue/");
             m.addFloatArg(1-value);
             osc.sendMessage(m);
+#ifdef DEBUG
+            cout << "osc send : " << value << endl;
+#endif
         }
     }
     
     void reset(){
         if(isConnected){
-            send(ofVec2f(0,0));
             send(0);
+            send(ofVec2f(0,0));
         }
     }
     

@@ -15,13 +15,16 @@
 
 #define DEBUG
 //#define REALTIME_CAPTURE_PEOPLE
-//#define REALTIME_CAPTURE_IRONFILINGS
+#define REALTIME_CAPTURE_IRONFILINGS
 #define WIDTH_PROCESS 640
 #define HEIGHT_PROCESS 480
 #define WIDTH_VIEW 640
 #define HEIGHT_VIEW ((float)HEIGHT_PROCESS/WIDTH_PROCESS)*WIDTH_VIEW
-#define UNIT_DISRANCE_PER_SECOND (WIDTH_PROCESS/10)
-#define CELL 32 //2,4,8,10,16,20,32,40,50
+#define UNIT_DISRANCE_PER_SECOND (WIDTH_PROCESS/8.5)
+#define CELL 25 //2,4,8,10,16,20,32,40,50
+#define RANGE_SEARCH_CELL 10
+#define NUM_CELLS_AROUND_TARGET 9 //5 or 9
+#define HOW_TINY 4 //min:2 max:cell
 
 class TimeManager{
     float startTime = 0;
@@ -51,9 +54,9 @@ private:
     bool isTrimmingMode;
     vector<ofVec2f> trimmedPosition;
     vector<int> cellColor;
-    ofVec2f plotterPosition, moveToPosition; //plotter position
+    ofVec2f plotterPosition, moveToFirst, moveToSecond; //plotter position
     bool plotterUp; //plotter stick iron filings or not
-    int howHungryPerCell[5] = {0,0,0,0,0};
+    int howHungryPerCell[9] = {0,0,0,0,0,0,0,0,0};
     TimeManager timeManager;
     
     //--------------------------------------------------------------
@@ -73,7 +76,7 @@ private:
         peopleCamera.setDeviceID(0);
         peopleCamera.initGrabber(WIDTH_PROCESS, HEIGHT_PROCESS);
 #else
-        peopleTestImage.load("mountain.png");
+        peopleTestImage.load("gradient.png");
         peopleTestImage.resize(WIDTH_PROCESS, HEIGHT_PROCESS);
         peopleTestImage.setImageType(OF_IMAGE_COLOR);
         colorPeopleImage = peopleTestImage;
@@ -95,12 +98,13 @@ private:
     
     //--------------------------------------------------------------
     void setup(){
-        isTrimmingMode = false;
+        isTrimmingMode = true;
         trimmedPosition.clear();
         
         //plotter
         plotterPosition = ofVec2f(CELL/2,CELL/2);
-        moveToPosition = plotterPosition;
+        moveToFirst = plotterPosition;
+        moveToSecond = plotterPosition;
         plotterUp = false;
         osc.reset();
         
@@ -114,10 +118,7 @@ private:
 #ifdef REALTIME_CAPTURE_IRONFILINGS
         ironFilingsCamera.update();
 #endif
-        
-        if(timeManager.getLeftTime() == 0){
-            
-        }
+        if(!isTrimmingMode)calculateImageColor(goalImage.getTexture(), realIronFilingsImage.getTexture());
     }
     
     //--------------------------------------------------------------
@@ -162,7 +163,7 @@ private:
          *******************/
         
 #ifdef REALTIME_CAPTURE_IRONFILINGS
-        colorIronFilingsImage.setFromPixels(ironfilingsCamera.getPixels());
+        colorIronFilingsImage.setFromPixels(ironFilingsCamera.getPixels());
 #endif
         ofPushMatrix();
         ofTranslate(0, HEIGHT_VIEW);
@@ -178,6 +179,7 @@ private:
         realIronFilingsImage.begin();
         if(trimmedArea.isEmpty() || isTrimmingMode) grayIronFilingsImage = colorIronFilingsImage;
         else grayIronFilingsImage = trimmedIronFilingsImage;
+        grayIronFilingsImage.contrastStretch(); //increase the contrast
         grayIronFilingsImage.draw(0,0);
         realIronFilingsImage.end();
         
@@ -227,74 +229,201 @@ private:
                 trimmedIronFilingsImage.resize(WIDTH_PROCESS, HEIGHT_PROCESS);
                 trimmedIronFilingsImage.drawROI(0, 0, WIDTH_VIEW, HEIGHT_VIEW);
             }
-            
         }
         ofPopStyle();
     }
     //--------------------------------------------------------------
     void calculateImageColor(ofTexture& goal, ofTexture& real){
         
-        if(plotterPosition == moveToPosition){ //caluculate next position
-            const ofVec2f nowPosition = plotterPosition;
+        if(timeManager.getLeftTime() == 0){
             
-            ofPixels goalPixels, realPixels;
-            goal.readToPixels(goalPixels);
-            real.readToPixels(realPixels);
-            
-            int nx = floor(ofRandom(WIDTH_PROCESS/CELL))*CELL;
-            int ny = floor(ofRandom(HEIGHT_PROCESS/CELL))*CELL;
-            const ofVec2f nextPosition = ofVec2f(nx,ny);
-            
-            ofVec2f aroundCells[5] = {
-                ofVec2f(0,0), //center
-                ofVec2f(0,-1), //up
-                ofVec2f(1,0), //right
-                ofVec2f(0,1), //down
-                ofVec2f(-1,0) //left
-            };
-            
-            int goalGrayScalePerCell[5] = {0, 0, 0, 0, 0};
-            int realGrayScalePerCell[5] = {0, 0, 0, 0, 0};
-            
-            
-            for(int i=0; i<5; i++){ //check all cell
-                for(int y=0; y<CELL; y++){
-                    for(int x=0; x<CELL; x++){
-                        int px = nextPosition.x + aroundCells[i].x*CELL + x;
-                        int py = nextPosition.y + aroundCells[i].y*CELL + y;
-                        goalGrayScalePerCell[i] += 255 - goalPixels.getColor(px, py).r;
-                        realGrayScalePerCell[i] += 255 - realPixels.getColor(px, py).r;
+            if( moveToFirst == moveToSecond ){ //caluculate next position
+                const ofVec2f nowPosition = moveToSecond;
+                
+                ofPixels goalPixels, realPixels;
+                goal.readToPixels(goalPixels);
+                real.readToPixels(realPixels);
+                
+                //int nx = ( floor(ofRandom(WIDTH_PROCESS/CELL-2)) +1)*CELL;
+                //int ny = ( floor(ofRandom(HEIGHT_PROCESS/CELL-2)) +1)*CELL;
+
+                int nx = floor(ofRandom(WIDTH_PROCESS/CELL))*CELL;
+                int ny = floor(ofRandom(HEIGHT_PROCESS/CELL))*CELL;
+
+                const ofVec2f nextPosition = ofVec2f(nx,ny);
+                
+                
+                
+                bool isExpand[9] = {true, true, true, true, true, true, true, true, true};
+                
+                int loop = 0;
+                while(loop < RANGE_SEARCH_CELL){
+                    bool isBreakWhile = false; //break while or not
+                    
+                    ofVec2f aroundCells[9] = {
+                        ofVec2f(0,0)*(loop+1), //center
+                        ofVec2f(0,-1)*(loop+1), //up
+                        ofVec2f(1,0)*(loop+1), //right
+                        ofVec2f(0,1)*(loop+1), //down
+                        ofVec2f(-1,0)*(loop+1), //left
+                        ofVec2f(1,-1)*(loop+1), //up right
+                        ofVec2f(1,1)*(loop+1), //down right
+                        ofVec2f(-1,1)*(loop+1), //down left
+                        ofVec2f(-1,-1)*(loop+1) //left up
+                    };
+                    
+                    int goalGrayScalePerCell[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+                    int realGrayScalePerCell[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+                    const int num = NUM_CELLS_AROUND_TARGET;
+                    
+                    for(int i=0; i<num; i++){ //check all cell
+                        if(isExpand[i]){
+                            for(int y=0; y<CELL; y++){
+                                for(int x=0; x<CELL; x++){
+                                    int px = nextPosition.x + aroundCells[i].x*CELL + x;
+                                    int py = nextPosition.y + aroundCells[i].y*CELL + y;
+                                    if(px < 0 || px >= WIDTH_PROCESS || py < 0 || py >= HEIGHT_PROCESS) isExpand[i] = false;
+                                    goalGrayScalePerCell[i] += (255 - MIN(goalPixels.getColor(px, py).r, 230) );
+                                    realGrayScalePerCell[i] += (255 - MIN(realPixels.getColor(px, py).r, 230) );
+                                    
+                                }
+                            }
+                            howHungryPerCell[i] = (goalGrayScalePerCell[i] - realGrayScalePerCell[i])/(CELL*CELL);
+                        }
                     }
+                    
+                    
+                    bool isHungry, isChangeNextPoint;
+                    
+                    //if the center cell is not need to be moved, go to search next point
+                    howHungryPerCell[0] == 0 ? isChangeNextPoint = true : isChangeNextPoint = false;
+                    
+                    if(!isChangeNextPoint){
+                        howHungryPerCell[0] > 0 ? isHungry = true : isHungry = false;
+
+                        int movePositionIndex = -1;
+                        for(int i=1; i<num; i++){
+                            if(isExpand[i]){
+                                if(movePositionIndex < 0) movePositionIndex = i; //init index
+                                else{
+                                    if(isHungry){ //look for the most enough cell around the center cell
+                                        if(howHungryPerCell[movePositionIndex] > howHungryPerCell[i])
+                                            movePositionIndex = i;
+                                    }else{ //look for the most hungry cell around the center cell
+                                        if(howHungryPerCell[movePositionIndex] < howHungryPerCell[i])
+                                            movePositionIndex = i;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        
+                        
+                        if(movePositionIndex < 0){ // no longer move magnet anywhere(there isn't the hungry point)
+                            movePositionIndex = MAX(0, movePositionIndex);
+                            isChangeNextPoint = true; //search the different point
+                        }
+                        
+                        
+                        
+                        //check whether need to expand the serching area or not (continue while)
+                        if(isHungry){
+                            if(howHungryPerCell[movePositionIndex] == 0){
+                                isExpand[movePositionIndex] = false;
+                            }
+                            else if( howHungryPerCell[movePositionIndex] > 0){
+                                isBreakWhile = false;
+                            }else{
+                                isBreakWhile = true;
+                            }
+                        }else{
+                            if(howHungryPerCell[movePositionIndex] == 0){
+                                isExpand[movePositionIndex] = false;
+                            }
+                            else if( howHungryPerCell[movePositionIndex] < 0){
+                                isBreakWhile = false;
+                            }else{
+                                isBreakWhile = true;
+                            }
+                        }
+                        
+                        if(isBreakWhile){
+                            plotterPosition = nextPosition + ofVec2f(CELL/2, CELL/2);
+                            
+                            if(isHungry){
+                                moveToFirst = nextPosition  + ofVec2f(CELL/2, CELL/2) + aroundCells[movePositionIndex]*CELL;
+                                moveToSecond = nextPosition  + ofVec2f(CELL/2, CELL/2);
+                                
+                                
+                            }else{
+                                moveToFirst = nextPosition  + ofVec2f(CELL/2, CELL/2);
+                                moveToSecond = nextPosition  + ofVec2f(CELL/2, CELL/2) + aroundCells[movePositionIndex]*CELL;
+                            }
+                            
+                            //tiny
+                            ofVec2f direction = moveToSecond - moveToFirst;
+                            direction.x = ofSign(direction.x);
+                            direction.y = ofSign(direction.y);
+                            moveToSecond -= direction*ofVec2f(CELL/(float)HOW_TINY, CELL/(float)HOW_TINY);
+                            moveToFirst += direction*ofVec2f(CELL/(float)HOW_TINY, CELL/(float)HOW_TINY);
+                        }
+                        
+                    }else{ isBreakWhile = true; }
+                    
+                    
+                    
+                    if(isBreakWhile){
+                        if(!isChangeNextPoint){
+                            plotterUp = false;
+                            osc.send(0);
+                            ofSleepMillis(500);
+                            osc.send(moveToFirst/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
+                            float dist = moveToFirst.distance(nowPosition);
+                            timeManager.start(dist/(float)UNIT_DISRANCE_PER_SECOND);
+                        }
+                        break;
+                    }
+                    
+                    loop++;
                 }
-                howHungryPerCell[i] = (goalGrayScalePerCell[i] - realGrayScalePerCell[i])/(float)(CELL*CELL);
+                
+            }else{ //plotter move to "moveToFirst"
+                
+                plotterUp = true;
+                osc.send(1);
+                ofSleepMillis(500);
+                osc.send(moveToSecond/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
+                
+                
+                float dist = moveToSecond.distance(moveToFirst);
+                timeManager.start(dist/(float)UNIT_DISRANCE_PER_SECOND);
+                
+                moveToFirst = moveToSecond;
             }
-            
-            plotterPosition = nextPosition + ofVec2f(CELL/2, CELL/2);
-            
-            
-            float dist = nextPosition.distance(nowPosition);
-            timeManager.start(dist/(float)UNIT_DISRANCE_PER_SECOND);
-            
-        }else{ //plotter move to "moveToPosition"
-            
         }
-        
     }
     //--------------------------------------------------------------
     void drawPlotterInformation(){
         ofPushStyle();
-        ofSetColor(0, 180, 0);
+        ofSetColor(150, 0, 0);
         plotterUp == true ? ofFill() : ofNoFill();
-        ofDrawCircle(plotterPosition.x, plotterPosition.y, 10);
+        ofDrawCircle(moveToSecond.x, moveToSecond.y, 10);
+        ofDrawCircle(moveToFirst.x, moveToFirst.y, 10);
         
-        ofVec2f aroundCells[5] = {
+        ofVec2f aroundCells[9] = {
             ofVec2f(0,0), //center
             ofVec2f(0,-1), //up
             ofVec2f(1,0), //right
             ofVec2f(0,1), //down
-            ofVec2f(-1,0) //left
+            ofVec2f(-1,0), //left
+            ofVec2f(1,-1), //up right
+            ofVec2f(1,1), //down right
+            ofVec2f(-1,1), //down left
+            ofVec2f(-1,-1) //left up
         };
-        for(int i=0; i<5; i++){
+        
+        for(int i=0; i<NUM_CELLS_AROUND_TARGET; i++){
             ofDrawBitmapStringHighlight(ofToString(howHungryPerCell[i]),
                                         plotterPosition + aroundCells[i]*40 + ofVec2f(-15, 6),
                                         ofColor(0,100), ofColor(255));
@@ -350,6 +479,7 @@ public:
             }
         }
         if(key == 'n') calculateImageColor(goalImage.getTexture(), realIronFilingsImage.getTexture());
+        if(key == 'r') osc.reset();
     }
     //--------------------------------------------------------------
     void mousePressed(int x, int y){

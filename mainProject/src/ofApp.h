@@ -3,6 +3,7 @@
 #include "ofMain.h"
 #include "ComputerVision.hpp"
 
+
 class ofApp : public ofBaseApp{
 
 	public:
