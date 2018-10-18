@@ -1,10 +1,8 @@
 #pragma once
 
 #include "ofMain.h"
-#include "PlotterController.hpp"
+#include "ComputerVision.hpp"
 
-
-#define DEBUG
 
 class ofApp : public ofBaseApp{
 
@@ -24,8 +22,6 @@ class ofApp : public ofBaseApp{
 		void windowResized(int w, int h);
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);
+    ComputerVision cv;
     
-    PlotterController controller;
-    ofVec2f position;
-    float plotValue;
 };

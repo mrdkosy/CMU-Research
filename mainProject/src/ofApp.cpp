@@ -2,54 +2,23 @@
 //--------------------------------------------------------------
 void ofApp::setup(){
     ofSetBackgroundColor(255);
-    ofSetFrameRate(30);
+    ofSetFrameRate(60);
     ofEnableAlphaBlending();
-    
-    
-    //plotter controller
-    controller.init();
-    ofSetLineWidth(0.1);
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
-#ifdef DEBUG
-    if(ofGetFrameNum() % 60 == 0) cout << "fps : " << ofGetFrameRate() << endl;
-#endif
-    //plotter controller
-    controller.update();
-    
+    //if(ofGetFrameNum() % 60 == 0) cout << ofGetFrameRate() << endl;
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-    
-    //plotter controller
-    controller.draw();
-    
-//    //osc
-//    float v = controller.getPlotValue();
-//    if(v != plotValue){
-//        sendOscMessage(v); //*0.35
-//        plotValue = v;
-//    }
-//    
-//    ofVec2f p = controller.getPosition();
-//    if(p != position && p.x >= 0 && p.y >= 0){
-//        sendOscMessage(p);
-//        position = p;
-//    }
-    
-    
-    
+    cv.draw();
 }
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
-    controller.keyPressed(key);
-//    if(key == 'o'){
-//        sendOscMessage(ofVec2f(0,0));
-//    }
+    cv.keyPressed(key);
 }
 
 //--------------------------------------------------------------
@@ -69,7 +38,7 @@ void ofApp::mouseDragged(int x, int y, int button){
 
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button){
-    controller.mousePressed(x, y);
+    cv.mousePressed(x,y);
 }
 
 //--------------------------------------------------------------
