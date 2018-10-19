@@ -21,7 +21,7 @@
 #define WIDTH_VIEW 640
 #define HEIGHT_VIEW ((float)HEIGHT_PROCESS/WIDTH_PROCESS)*WIDTH_VIEW
 #define UNIT_DISRANCE_PER_SECOND (WIDTH_PROCESS/8.5)
-#define CELL 25 //2,4,8,10,16,20,32,40,50
+#define CELL 20 //2,4,8,10,16,20,32,40,50
 #define RANGE_SEARCH_CELL 1
 #define NUM_CELLS_AROUND_TARGET 5 //5 or 9
 #define HOW_TINY 4 //min:2 max:cell 0:just center
@@ -199,7 +199,7 @@ private:
         ofPushMatrix();
         ofTranslate(WIDTH_VIEW, HEIGHT_VIEW);
         realIronFilingsImage.draw(0, 0, WIDTH_VIEW, HEIGHT_VIEW);
-        drawGrid();
+        //drawGrid();
         drawPlotterInformation();
         if(isColorDebugMode || isCalibrationMode) searchColorByMouse();
         drawText("cv image of iron filings");
@@ -303,9 +303,10 @@ private:
                 int goalGrayScalePerCell[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
                 int realGrayScalePerCell[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
                 
-                const int num = NUM_CELLS_AROUND_TARGET;
+                const int HALF_CELL = CELL/2;
                 
-                for(int i=0; i<num; i++){ //check all cell
+
+                for(int i=0; i<NUM_CELLS_AROUND_TARGET; i++){ //check all cell
                     if(isExpand[i]){
                         for(int y=0; y<CELL; y++){
                             for(int x=0; x<CELL; x++){
@@ -321,17 +322,23 @@ private:
                     }
                 }
                 
+            
+                
                 
                 bool isHungry, isChangeNextPoint;
                 
                 //if the center cell is not need to be moved, go to search next point
                 howHungryPerCell[0] == 0 ? isChangeNextPoint = true : isChangeNextPoint = false;
+                if(!isExpand[0]){
+                    isBreakWhile = true;
+                    isChangeNextPoint = true;
+                }
                 
                 if(!isChangeNextPoint){
                     howHungryPerCell[0] > 0 ? isHungry = true : isHungry = false;
                     
                     int movePositionIndex = -1;
-                    for(int i=1; i<num; i++){
+                    for(int i=1; i<NUM_CELLS_AROUND_TARGET; i++){
                         if(isExpand[i]){
                             if(movePositionIndex < 0) movePositionIndex = i; //init index
                             else{
