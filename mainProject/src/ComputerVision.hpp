@@ -16,7 +16,7 @@
 
 //#define DEBUG
 //#define REALTIME_CAPTURE_PEOPLE
-//#define REALTIME_CAPTURE_IRONFILINGS
+#define REALTIME_CAPTURE_IRONFILINGS
 #define WIDTH_PROCESS 640
 #define HEIGHT_PROCESS 480
 #define WIDTH_VIEW 640
@@ -110,7 +110,7 @@ private:
         isCalibrationMode = false;
         
         //plotter
-        plotterPosition = ofVec2f(CELL/2,CELL/2);
+        plotterPosition = ofVec2f(0,0);
         moveToFirst = plotterPosition;
         moveToSecond = plotterPosition;
         plotterUp = false;
@@ -128,8 +128,6 @@ private:
 #endif
         if( (!isTrimmingMode)&&(!isColorDebugMode) && (!isCalibrationMode)){
             if(timeManager.getLeftTime() == 0){
-//                int nx = floor(ofRandom(WIDTH_PROCESS/CELL))*CELL;
-//                int ny = floor(ofRandom(HEIGHT_PROCESS/CELL))*CELL;
                 int nx = ofRandom(WIDTH_PROCESS);
                 int ny = ofRandom(HEIGHT_PROCESS);
                 callCalculateImageColor(ofVec2f(nx, ny));
@@ -186,7 +184,7 @@ private:
         ofTranslate(0, HEIGHT_VIEW);
         trimImage();
         drawText("real image of iron filings from camera");
-        
+        ofDrawBitmapStringHighlight(ofToString(plotterPosition), ofVec2f(10, 50),ofColor(170, 0, 0), ofColor(255));
         ofPopMatrix();
         
         
@@ -241,7 +239,7 @@ private:
             
             ofSetColor(0,0,200);
             for(int i=0; i<trimmedPosition.size(); i++){
-                ofDrawCircle(trimmedPosition[i].x, trimmedPosition[i].y, 5);
+                ofDrawCircle(trimmedPosition[i].x, trimmedPosition[i].y, 2);
             }
             if(!trimmedArea.isEmpty()){
                 ofNoFill();
@@ -290,19 +288,6 @@ private:
             while(loop < RANGE_SEARCH_CELL){
                 bool isBreakWhile = false; //break while or not
                 
-                /*
-                ofVec2f aroundCells[9] = {
-                    ofVec2f(0,0)*(loop+1), //center
-                    ofVec2f(0,-1)*(loop+1), //up
-                    ofVec2f(1,0)*(loop+1), //right
-                    ofVec2f(0,1)*(loop+1), //down
-                    ofVec2f(-1,0)*(loop+1), //left
-                    ofVec2f(1,-1)*(loop+1), //up right
-                    ofVec2f(1,1)*(loop+1), //down right
-                    ofVec2f(-1,1)*(loop+1), //down left
-                    ofVec2f(-1,-1)*(loop+1) //left up
-                };
-                 */
                 
                 ofVec2f aroundCells[9] = {
                     ofVec2f(0,0), //center
@@ -435,7 +420,7 @@ private:
                 if(isBreakWhile){
                     if(!isChangeNextPoint){
                         plotterUp = false;
-                        osc.send(0);
+                        osc.plotterDown();
                         osc.send(moveToFirst/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
                         float dist = moveToFirst.distance(nowPosition);
                         timeManager.start(dist/(float)UNIT_DISRANCE_PER_SECOND);
@@ -451,7 +436,7 @@ private:
         }else{ //plotter move to "moveToFirst"
             
             plotterUp = true;
-            osc.send(1);
+            osc.plotterUp();
             osc.send(moveToSecond/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
             
             
@@ -477,7 +462,8 @@ private:
     void drawPlotterInformation(){
         ofPushStyle();
         ofSetColor(150, 0, 0);
-        plotterUp == true ? ofFill() : ofNoFill();
+        //plotterUp == true ? ofFill() : ofNoFill();
+        ofNoFill();
         ofSetRectMode(OF_RECTMODE_CENTER);
         ofSetLineWidth(3);
         ofDrawRectangle(moveToSecond.x, moveToSecond.y, CELL_SIZE, CELL_SIZE);
@@ -541,14 +527,47 @@ public:
     
     //--------------------------------------------------------------
     void keyPressed(int key){
+        
         if(key == 't') isTrimmingMode = !isTrimmingMode;
-        if(key == 'c'){
-            if(isTrimmingMode){
+        if(isTrimmingMode){
+            if(key == 'c'){
                 trimmedPosition.clear();
                 trimmedArea.setSize(0,0);
             }
+            
+            ofVec2f p = plotterPosition/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS); //0-1
+            float plus = 0.001;
+            
+            if(key == OF_KEY_UP){
+                p.y = MAX(p.y - plus, 0);
+                osc.send(p);
+            }
+            if(key == OF_KEY_DOWN){
+                p.y = MIN(p.y + plus, 1);
+                osc.send(p);
+            }
+            if(key == OF_KEY_RIGHT){
+                p.x = MIN(p.x + plus, 1);
+                osc.send(p);
+            }
+            if(key == OF_KEY_LEFT){
+                p.x = MAX(p.x - plus, 0);
+                osc.send(p);
+            }
+            plotterPosition = p*ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS);
+            
+            if(key == 'o') osc.setRange(0, p.x, 0, p.y);
+            if(key == 'm'){
+                osc.moveToMax();
+                plotterPosition = osc.getRangeMax() * ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS);
+            }
+            if(key == 'u') osc.plotterUp();
+            if(key == 'd') osc.plotterDown();
         }
-        if(key == 'r') osc.reset();
+        if(key == 'r'){
+            osc.reset();
+            plotterPosition = ofVec2f(0,0);
+        }
         if(key == 'd') isColorDebugMode = !isColorDebugMode;
         if(key == 'a') isCalibrationMode = !isCalibrationMode;
         
@@ -559,6 +578,7 @@ public:
             name += ".png";
             ofSaveImage(pixels, name);
         }
+        
         
     }
     //--------------------------------------------------------------
@@ -573,7 +593,8 @@ public:
                     int _y = y-HEIGHT_VIEW;
                     
                     if(trimmedPosition.size() == 1){
-                        _y = ((float)HEIGHT_PROCESS/WIDTH_PROCESS)*(_x-trimmedPosition[0].x) + trimmedPosition[0].y;
+                        _x = ((float)WIDTH_PROCESS/HEIGHT_PROCESS)*(_y-trimmedPosition[0].y) + trimmedPosition[0].x;
+//                        _y = ((float)HEIGHT_PROCESS/WIDTH_PROCESS)*(_x-trimmedPosition[0].x) + trimmedPosition[0].y;
                     }
                     trimmedPosition.push_back(ofVec2f(_x, _y));
                 }
