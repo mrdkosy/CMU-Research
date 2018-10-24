@@ -16,11 +16,11 @@
 
 //#define DEBUG
 //#define REALTIME_CAPTURE_PEOPLE
-#define REALTIME_CAPTURE_IRONFILINGS
+//#define REALTIME_CAPTURE_IRONFILINGS
 #define WIDTH_PROCESS 640
 #define HEIGHT_PROCESS 480
 #define WIDTH_VIEW 640
-#define HEIGHT_VIEW ((float)HEIGHT_PROCESS/WIDTH_PROCESS)*WIDTH_VIEW
+#define HEIGHT_VIEW (((float)HEIGHT_PROCESS/WIDTH_PROCESS)*WIDTH_VIEW)
 #define UNIT_DISRANCE_PER_SECOND (WIDTH_PROCESS/8.5)
 #define CELL 20 //2,4,8,10,16,20,32,40,50
 #define RANGE_SEARCH_CELL 200
@@ -65,6 +65,8 @@ private:
     bool isCalibrationMode; //calibration
     int CELL_SIZE;
     
+    ofImage horizonalSobel, verticalSobel;
+    
     //--------------------------------------------------------------
     void init(){
         
@@ -76,13 +78,15 @@ private:
         colorPeopleImage.allocate(WIDTH_PROCESS, HEIGHT_PROCESS);
         trimmedIronFilingsImage.allocate(WIDTH_PROCESS, HEIGHT_PROCESS);
         
+        horizonalSobel.allocate(WIDTH_PROCESS, HEIGHT_PROCESS, OF_IMAGE_COLOR);
+        verticalSobel.allocate(WIDTH_PROCESS, HEIGHT_PROCESS, OF_IMAGE_COLOR);
         
 #ifdef REALTIME_CAPTURE_PEOPLE
         peopleCamera.setVerbose(true);
         peopleCamera.setDeviceID(0);
         peopleCamera.initGrabber(WIDTH_PROCESS, HEIGHT_PROCESS);
 #else
-        peopleTestImage.load("mountain.png");
+        peopleTestImage.load("mountain2.jpg");
         peopleTestImage.resize(WIDTH_PROCESS, HEIGHT_PROCESS);
         peopleTestImage.setImageType(OF_IMAGE_COLOR);
         colorPeopleImage = peopleTestImage;
@@ -167,6 +171,37 @@ private:
         ofPopMatrix();
         
         
+        
+        /*******************
+         sobel filter
+         *******************/
+        ofPixels pixels = grayPeopleImage.getPixels();
+        
+        ofPushMatrix();
+        ofTranslate(WIDTH_VIEW*2, 0);
+        cv::Mat src = ofxCv::toCv(ofImage(pixels));
+        cv::Mat blurimg;
+        cv::blur(src, blurimg, cv::Size(5,5));
+        cv::Mat kernel = (cv::Mat1f(3,3)<<-1,0,1,-2,0,2,-1,0,1);
+        cv::Mat sobelimg;
+        cv::filter2D(blurimg, sobelimg, src.depth(), kernel);
+        ofxCv::toOf(sobelimg, horizonalSobel);
+        horizonalSobel.update();
+        horizonalSobel.draw(0, 0, 400, 300);
+        drawText("horizonal sobel");
+        
+        ofTranslate(0, 300);
+        src = ofxCv::toCv(ofImage(pixels));
+        cv::blur(src, blurimg, cv::Size(5,5));
+        kernel = (cv::Mat1f(3,3)<<1,2,1,0,0,0,-1,-2,-1);
+        cv::filter2D(blurimg, sobelimg, src.depth(), kernel);
+        ofxCv::toOf(sobelimg, verticalSobel);
+        verticalSobel.update();
+        verticalSobel.draw(0, 0, 400, 300);
+        drawText("vertical sobel");
+        ofPopMatrix();
+
+        
     }
     
     //--------------------------------------------------------------
@@ -195,7 +230,6 @@ private:
         if(trimmedArea.isEmpty() || isTrimmingMode) grayIronFilingsImage = colorIronFilingsImage;
         else grayIronFilingsImage = trimmedIronFilingsImage;
         grayIronFilingsImage.contrastStretch(); //increase the contrast
-        //ofxCv::Canny(<#const S &src#>, <#D &dst#>, <#double threshold1#>, <#double threshold2#>);
         grayIronFilingsImage.draw(0,0);
         realIronFilingsImage.end();
         
@@ -208,6 +242,8 @@ private:
         drawText("cv image of iron filings");
         ofPopMatrix();
         
+    
+
     }
     //--------------------------------------------------------------
     void searchColorByMouse(){
@@ -307,6 +343,7 @@ private:
                 const int _CELL_SIZE = CELL + 2*loop;
                 const int HALF_CELL = _CELL_SIZE/2;
                 
+                
                 int counter = 0;
                 for(int i=0; i<NUM_CELLS_AROUND_TARGET; i++){ //check all cell
                     if(isExpand[i]){
@@ -325,6 +362,7 @@ private:
                         howHungryPerCell[i] = (goalGrayScalePerCell[i] - realGrayScalePerCell[i])/MAX(counter,1);
                     }
                 }
+                
                 
             
                 //cout << "howHungryPerCell[0] : " << howHungryPerCell[0] << endl;
@@ -468,8 +506,6 @@ private:
         ofSetLineWidth(3);
         ofDrawRectangle(moveToSecond.x, moveToSecond.y, CELL_SIZE, CELL_SIZE);
         ofDrawRectangle(moveToFirst.x, moveToFirst.y, CELL_SIZE, CELL_SIZE);
-        //ofDrawCircle(moveToSecond.x, moveToSecond.y, 10);
-        //ofDrawCircle(moveToFirst.x, moveToFirst.y, 10);
         
         ofVec2f aroundCells[9] = {
             ofVec2f(0,0), //center
