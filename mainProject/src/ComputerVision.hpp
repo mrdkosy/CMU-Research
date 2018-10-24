@@ -12,19 +12,20 @@
 #include <stdio.h>
 #include "OscController.hpp"
 #include "ofxOpenCv.h"
+#include "ofxCv.h"
 
-#define DEBUG
+//#define DEBUG
 //#define REALTIME_CAPTURE_PEOPLE
-#define REALTIME_CAPTURE_IRONFILINGS
+//#define REALTIME_CAPTURE_IRONFILINGS
 #define WIDTH_PROCESS 640
 #define HEIGHT_PROCESS 480
 #define WIDTH_VIEW 640
-#define HEIGHT_VIEW ((float)HEIGHT_PROCESS/WIDTH_PROCESS)*WIDTH_VIEW
+#define HEIGHT_VIEW (((float)HEIGHT_PROCESS/WIDTH_PROCESS)*WIDTH_VIEW)
 #define UNIT_DISRANCE_PER_SECOND (WIDTH_PROCESS/8.5)
-#define CELL 25 //2,4,8,10,16,20,32,40,50
-#define RANGE_SEARCH_CELL 1
+#define CELL 20 //2,4,8,10,16,20,32,40,50
+#define RANGE_SEARCH_CELL 200
 #define NUM_CELLS_AROUND_TARGET 5 //5 or 9
-#define HOW_TINY 4 //min:2 max:cell 0:just center
+#define HOW_TINY 0 //min:2 max:cell 0:just center
 
 class TimeManager{
     float startTime = 0;
@@ -33,7 +34,9 @@ public:
     void start(float t){
         startTime = ofGetElapsedTimef();
         timeLimit = t;
+#ifdef DEBUG
         cout << "set time : left -> " << timeLimit << endl;
+#endif
     }
     float getLeftTime(){
         return MAX(0, timeLimit - (ofGetElapsedTimef() - startTime));
@@ -60,6 +63,9 @@ private:
     TimeManager timeManager;
     bool isColorDebugMode = false; //you can search the color by your mouse
     bool isCalibrationMode; //calibration
+    int CELL_SIZE;
+    
+    ofImage horizonalSobel, verticalSobel;
     
     //--------------------------------------------------------------
     void init(){
@@ -72,6 +78,8 @@ private:
         colorPeopleImage.allocate(WIDTH_PROCESS, HEIGHT_PROCESS);
         trimmedIronFilingsImage.allocate(WIDTH_PROCESS, HEIGHT_PROCESS);
         
+        horizonalSobel.allocate(WIDTH_PROCESS, HEIGHT_PROCESS, OF_IMAGE_COLOR);
+        verticalSobel.allocate(WIDTH_PROCESS, HEIGHT_PROCESS, OF_IMAGE_COLOR);
         
 #ifdef REALTIME_CAPTURE_PEOPLE
         peopleCamera.setVerbose(true);
@@ -91,7 +99,7 @@ private:
         ironFilingsCamera.setDeviceID(1);
         ironFilingsCamera.initGrabber(WIDTH_PROCESS, HEIGHT_PROCESS);
 #else
-        ironfilingsTestImage.load("noise.png");
+        ironfilingsTestImage.load("1087.png");
         ironfilingsTestImage.resize(WIDTH_PROCESS, HEIGHT_PROCESS);
         ironfilingsTestImage.setImageType(OF_IMAGE_COLOR);
         colorIronFilingsImage = ironfilingsTestImage;
@@ -106,7 +114,7 @@ private:
         isCalibrationMode = false;
         
         //plotter
-        plotterPosition = ofVec2f(CELL/2,CELL/2);
+        plotterPosition = ofVec2f(0,0);
         moveToFirst = plotterPosition;
         moveToSecond = plotterPosition;
         plotterUp = false;
@@ -124,8 +132,6 @@ private:
 #endif
         if( (!isTrimmingMode)&&(!isColorDebugMode) && (!isCalibrationMode)){
             if(timeManager.getLeftTime() == 0){
-//                int nx = floor(ofRandom(WIDTH_PROCESS/CELL))*CELL;
-//                int ny = floor(ofRandom(HEIGHT_PROCESS/CELL))*CELL;
                 int nx = ofRandom(WIDTH_PROCESS);
                 int ny = ofRandom(HEIGHT_PROCESS);
                 callCalculateImageColor(ofVec2f(nx, ny));
@@ -165,6 +171,37 @@ private:
         ofPopMatrix();
         
         
+        
+        /*******************
+         sobel filter
+         *******************/
+        ofPixels pixels = grayPeopleImage.getPixels();
+        
+        ofPushMatrix();
+        ofTranslate(WIDTH_VIEW*2, 0);
+        cv::Mat src = ofxCv::toCv(ofImage(pixels));
+        cv::Mat blurimg;
+        cv::blur(src, blurimg, cv::Size(5,5));
+        cv::Mat kernel = (cv::Mat1f(3,3)<<-1,0,1,-2,0,2,-1,0,1);
+        cv::Mat sobelimg;
+        cv::filter2D(blurimg, sobelimg, src.depth(), kernel);
+        ofxCv::toOf(sobelimg, horizonalSobel);
+        horizonalSobel.update();
+        horizonalSobel.draw(0, 0, 400, 300);
+        drawText("horizonal sobel");
+        
+        ofTranslate(0, 300);
+        src = ofxCv::toCv(ofImage(pixels));
+        cv::blur(src, blurimg, cv::Size(5,5));
+        kernel = (cv::Mat1f(3,3)<<1,2,1,0,0,0,-1,-2,-1);
+        cv::filter2D(blurimg, sobelimg, src.depth(), kernel);
+        ofxCv::toOf(sobelimg, verticalSobel);
+        verticalSobel.update();
+        verticalSobel.draw(0, 0, 400, 300);
+        drawText("vertical sobel");
+        ofPopMatrix();
+
+        
     }
     
     //--------------------------------------------------------------
@@ -182,7 +219,7 @@ private:
         ofTranslate(0, HEIGHT_VIEW);
         trimImage();
         drawText("real image of iron filings from camera");
-        
+        ofDrawBitmapStringHighlight(ofToString(plotterPosition), ofVec2f(10, 50),ofColor(170, 0, 0), ofColor(255));
         ofPopMatrix();
         
         
@@ -199,12 +236,14 @@ private:
         ofPushMatrix();
         ofTranslate(WIDTH_VIEW, HEIGHT_VIEW);
         realIronFilingsImage.draw(0, 0, WIDTH_VIEW, HEIGHT_VIEW);
-        drawGrid();
+        //drawGrid();
         drawPlotterInformation();
         if(isColorDebugMode || isCalibrationMode) searchColorByMouse();
         drawText("cv image of iron filings");
         ofPopMatrix();
         
+    
+
     }
     //--------------------------------------------------------------
     void searchColorByMouse(){
@@ -236,7 +275,7 @@ private:
             
             ofSetColor(0,0,200);
             for(int i=0; i<trimmedPosition.size(); i++){
-                ofDrawCircle(trimmedPosition[i].x, trimmedPosition[i].y, 5);
+                ofDrawCircle(trimmedPosition[i].x, trimmedPosition[i].y, 2);
             }
             if(!trimmedArea.isEmpty()){
                 ofNoFill();
@@ -275,9 +314,6 @@ private:
             goal.readToPixels(goalPixels);
             real.readToPixels(realPixels);
             
-            //int nx = floor(ofRandom(WIDTH_PROCESS/CELL))*CELL;
-            //int ny = floor(ofRandom(HEIGHT_PROCESS/CELL))*CELL;
-            
             const ofVec2f nextPosition = np; //ofVec2f(nx,ny);
             
             
@@ -288,50 +324,64 @@ private:
             while(loop < RANGE_SEARCH_CELL){
                 bool isBreakWhile = false; //break while or not
                 
+                
                 ofVec2f aroundCells[9] = {
-                    ofVec2f(0,0)*(loop+1), //center
-                    ofVec2f(0,-1)*(loop+1), //up
-                    ofVec2f(1,0)*(loop+1), //right
-                    ofVec2f(0,1)*(loop+1), //down
-                    ofVec2f(-1,0)*(loop+1), //left
-                    ofVec2f(1,-1)*(loop+1), //up right
-                    ofVec2f(1,1)*(loop+1), //down right
-                    ofVec2f(-1,1)*(loop+1), //down left
-                    ofVec2f(-1,-1)*(loop+1) //left up
+                    ofVec2f(0,0), //center
+                    ofVec2f(0,-1), //up
+                    ofVec2f(1,0), //right
+                    ofVec2f(0,1), //down
+                    ofVec2f(-1,0), //left
+                    ofVec2f(1,-1), //up right
+                    ofVec2f(1,1), //down right
+                    ofVec2f(-1,1), //down left
+                    ofVec2f(-1,-1) //left up
                 };
                 
                 int goalGrayScalePerCell[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
                 int realGrayScalePerCell[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
                 
-                const int num = NUM_CELLS_AROUND_TARGET;
+                const int _CELL_SIZE = CELL + 2*loop;
+                const int HALF_CELL = _CELL_SIZE/2;
                 
-                for(int i=0; i<num; i++){ //check all cell
+                
+                int counter = 0;
+                for(int i=0; i<NUM_CELLS_AROUND_TARGET; i++){ //check all cell
                     if(isExpand[i]){
-                        for(int y=0; y<CELL; y++){
-                            for(int x=0; x<CELL; x++){
-                                int px = nextPosition.x + aroundCells[i].x*CELL + x;
-                                int py = nextPosition.y + aroundCells[i].y*CELL + y;
+                        counter = 0;
+                        for(int y=-HALF_CELL; y<HALF_CELL; y++){
+                            for(int x=-HALF_CELL; x<HALF_CELL; x++){
+                                int px = nextPosition.x + aroundCells[i].x*_CELL_SIZE + x;
+                                int py = nextPosition.y + aroundCells[i].y*_CELL_SIZE + y;
                                 if(px < 0 || px >= WIDTH_PROCESS || py < 0 || py >= HEIGHT_PROCESS) isExpand[i] = false;
                                 goalGrayScalePerCell[i] += (255 - MIN(goalPixels.getColor(px, py).r, 230) );
                                 realGrayScalePerCell[i] += (255 - MIN(realPixels.getColor(px, py).r, 230) );
+                                counter++;
                                 
                             }
                         }
-                        howHungryPerCell[i] = (goalGrayScalePerCell[i] - realGrayScalePerCell[i])/(CELL*CELL);
+                        howHungryPerCell[i] = (goalGrayScalePerCell[i] - realGrayScalePerCell[i])/MAX(counter,1);
                     }
                 }
                 
+                
+            
+                //cout << "howHungryPerCell[0] : " << howHungryPerCell[0] << endl;
+                //cout << "isExpand[0] : " << isExpand[0] << endl;
                 
                 bool isHungry, isChangeNextPoint;
                 
                 //if the center cell is not need to be moved, go to search next point
                 howHungryPerCell[0] == 0 ? isChangeNextPoint = true : isChangeNextPoint = false;
+                if(!isExpand[0]){
+                    isBreakWhile = true;
+                    isChangeNextPoint = true;
+                }
                 
                 if(!isChangeNextPoint){
                     howHungryPerCell[0] > 0 ? isHungry = true : isHungry = false;
                     
                     int movePositionIndex = -1;
-                    for(int i=1; i<num; i++){
+                    for(int i=1; i<NUM_CELLS_AROUND_TARGET; i++){
                         if(isExpand[i]){
                             if(movePositionIndex < 0) movePositionIndex = i; //init index
                             else{
@@ -347,10 +397,12 @@ private:
                     }
                     
                     
+                    //cout << "movePositionIndex : " << movePositionIndex << endl;
                     
                     if(movePositionIndex < 0){ // no longer move magnet anywhere(there isn't the hungry point)
                         movePositionIndex = MAX(0, movePositionIndex);
                         isChangeNextPoint = true; //search the different point
+                        
                     }
                     
                     
@@ -377,16 +429,16 @@ private:
                     }
                     
                     if(isBreakWhile){
-                        plotterPosition = nextPosition + ofVec2f(CELL/2, CELL/2);
+                        plotterPosition = nextPosition;// + ofVec2f(CELL/2, CELL/2);
                         
                         if(isHungry){
-                            moveToFirst = nextPosition  + ofVec2f(CELL/2, CELL/2) + aroundCells[movePositionIndex]*CELL;
-                            moveToSecond = nextPosition  + ofVec2f(CELL/2, CELL/2);
+                            moveToFirst = nextPosition + aroundCells[movePositionIndex]*_CELL_SIZE;//  + ofVec2f(CELL/2, CELL/2);
+                            moveToSecond = nextPosition;//  + ofVec2f(CELL/2, CELL/2);
                             
                             
                         }else{
-                            moveToFirst = nextPosition  + ofVec2f(CELL/2, CELL/2);
-                            moveToSecond = nextPosition  + ofVec2f(CELL/2, CELL/2) + aroundCells[movePositionIndex]*CELL;
+                            moveToFirst = nextPosition;//  + ofVec2f(CELL/2, CELL/2);
+                            moveToSecond = nextPosition + aroundCells[movePositionIndex]*_CELL_SIZE;//  + ofVec2f(CELL/2, CELL/2);
                         }
                         
                         //tiny
@@ -394,23 +446,25 @@ private:
                         direction.x = ofSign(direction.x);
                         direction.y = ofSign(direction.y);
                         if( HOW_TINY != 0 ){
-                            moveToSecond -= direction*ofVec2f(CELL/(float)HOW_TINY, CELL/(float)HOW_TINY);
-                            moveToFirst += direction*ofVec2f(CELL/(float)HOW_TINY, CELL/(float)HOW_TINY);
+                            moveToSecond -= direction*ofVec2f(_CELL_SIZE/(float)HOW_TINY, _CELL_SIZE/(float)HOW_TINY);
+                            moveToFirst += direction*ofVec2f(_CELL_SIZE/(float)HOW_TINY, _CELL_SIZE/(float)HOW_TINY);
                         }
                     }
                     
                 }else{ isBreakWhile = true; }
                 
-                
+                CELL_SIZE = _CELL_SIZE;
                 
                 if(isBreakWhile){
                     if(!isChangeNextPoint){
                         plotterUp = false;
-                        osc.send(0);
+                        osc.plotterDown();
                         osc.send(moveToFirst/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
                         float dist = moveToFirst.distance(nowPosition);
                         timeManager.start(dist/(float)UNIT_DISRANCE_PER_SECOND);
+                        
                     }
+                    //cout << "break while : " << loop << endl;
                     break;
                 }
                 
@@ -420,7 +474,7 @@ private:
         }else{ //plotter move to "moveToFirst"
             
             plotterUp = true;
-            osc.send(1);
+            osc.plotterUp();
             osc.send(moveToSecond/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
             
             
@@ -446,9 +500,12 @@ private:
     void drawPlotterInformation(){
         ofPushStyle();
         ofSetColor(150, 0, 0);
-        plotterUp == true ? ofFill() : ofNoFill();
-        ofDrawCircle(moveToSecond.x, moveToSecond.y, 10);
-        ofDrawCircle(moveToFirst.x, moveToFirst.y, 10);
+        //plotterUp == true ? ofFill() : ofNoFill();
+        ofNoFill();
+        ofSetRectMode(OF_RECTMODE_CENTER);
+        ofSetLineWidth(3);
+        ofDrawRectangle(moveToSecond.x, moveToSecond.y, CELL_SIZE, CELL_SIZE);
+        ofDrawRectangle(moveToFirst.x, moveToFirst.y, CELL_SIZE, CELL_SIZE);
         
         ofVec2f aroundCells[9] = {
             ofVec2f(0,0), //center
@@ -462,6 +519,7 @@ private:
             ofVec2f(-1,-1) //left up
         };
         
+        ofSetRectMode(OF_RECTMODE_CORNER);
         for(int i=0; i<NUM_CELLS_AROUND_TARGET; i++){
             ofDrawBitmapStringHighlight(ofToString(howHungryPerCell[i]),
                                         plotterPosition + aroundCells[i]*40 + ofVec2f(-15, 6),
@@ -505,15 +563,47 @@ public:
     
     //--------------------------------------------------------------
     void keyPressed(int key){
+        
         if(key == 't') isTrimmingMode = !isTrimmingMode;
-        if(key == 'c'){
-            if(isTrimmingMode){
+        if(isTrimmingMode){
+            if(key == 'c'){
                 trimmedPosition.clear();
                 trimmedArea.setSize(0,0);
             }
+            
+            ofVec2f p = plotterPosition/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS); //0-1
+            float plus = 0.001;
+            
+            if(key == OF_KEY_UP){
+                p.y = MAX(p.y - plus, 0);
+                osc.send(p);
+            }
+            if(key == OF_KEY_DOWN){
+                p.y = MIN(p.y + plus, 1);
+                osc.send(p);
+            }
+            if(key == OF_KEY_RIGHT){
+                p.x = MIN(p.x + plus, 1);
+                osc.send(p);
+            }
+            if(key == OF_KEY_LEFT){
+                p.x = MAX(p.x - plus, 0);
+                osc.send(p);
+            }
+            plotterPosition = p*ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS);
+            
+            if(key == 'o') osc.setRange(0, p.x, 0, p.y);
+            if(key == 'm'){
+                osc.moveToMax();
+                plotterPosition = osc.getRangeMax() * ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS);
+            }
+            if(key == 'u') osc.plotterUp();
+            if(key == 'd') osc.plotterDown();
         }
-        //if(key == 'n') CalculateImageColor(goalImage.getTexture(), realIronFilingsImage.getTexture());
-        if(key == 'r') osc.reset();
+        if(key == 'r'){
+            osc.reset();
+            plotterPosition = ofVec2f(0,0);
+        }
         if(key == 'd') isColorDebugMode = !isColorDebugMode;
         if(key == 'a') isCalibrationMode = !isCalibrationMode;
         
@@ -524,6 +614,7 @@ public:
             name += ".png";
             ofSaveImage(pixels, name);
         }
+        
         
     }
     //--------------------------------------------------------------
@@ -538,7 +629,8 @@ public:
                     int _y = y-HEIGHT_VIEW;
                     
                     if(trimmedPosition.size() == 1){
-                        _y = ((float)HEIGHT_PROCESS/WIDTH_PROCESS)*(_x-trimmedPosition[0].x) + trimmedPosition[0].y;
+                        _x = ((float)WIDTH_PROCESS/HEIGHT_PROCESS)*(_y-trimmedPosition[0].y) + trimmedPosition[0].x;
+//                        _y = ((float)HEIGHT_PROCESS/WIDTH_PROCESS)*(_x-trimmedPosition[0].x) + trimmedPosition[0].y;
                     }
                     trimmedPosition.push_back(ofVec2f(_x, _y));
                 }

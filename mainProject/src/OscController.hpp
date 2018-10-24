@@ -15,7 +15,7 @@
 
 //#define DEBUG
 
-#define IP "128.237.179.22"
+#define IP "128.237.121.129"
 #define PORT 12345
 
 class OscController
@@ -24,6 +24,8 @@ class OscController
 private:
     ofxOscSender osc;
     bool isConnected = false;
+    ofVec2f min = ofVec2f(0, 0);
+    ofVec2f max = ofVec2f(1, 1);
     
 public:
     OscController(){
@@ -32,10 +34,14 @@ public:
     
     void send(ofVec2f position){
         if(isConnected){
+            ofVec2f p;
+            p.x = position.x*(max.x - min.x) + min.x;
+            p.y = position.y*(max.y - min.y) + min.y;
+            
             ofxOscMessage m;
             m.setAddress("/plotter/position/");
-            m.addFloatArg(position.x);
-            m.addFloatArg(position.y);
+            m.addFloatArg(p.x);
+            m.addFloatArg(p.y);
             osc.sendMessage(m);
 #ifdef DEBUG
             cout << "osc send : " << position << endl;
@@ -55,12 +61,41 @@ public:
 #endif
         }
     }
-    
+
     void reset(){
         if(isConnected){
             send(0);
             send(ofVec2f(0,0));
         }
+    }
+    
+    void setRange(float minX, float maxX, float minY, float maxY){
+        min = ofVec2f(minX, minY);
+        max = ofVec2f(maxX, maxY);
+        cout << "set the range of moving plotter : x[ ";
+        cout << min.x << ", " << max.x << " ], y[ ";
+        cout << min.y << ", " << max.y << " ]" << endl;;
+    }
+    
+    void moveToMax(){
+        plotterDown();
+        send(max);
+    }
+    
+    ofVec2f getRangeMin(){
+        return min;
+    }
+    
+    ofVec2f getRangeMax(){
+        return max;
+    }
+    
+    void plotterUp(){
+        send(1);
+    }
+    
+    void plotterDown(){
+        send(0);
     }
     
     
