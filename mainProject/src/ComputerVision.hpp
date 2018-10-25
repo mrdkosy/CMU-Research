@@ -122,7 +122,7 @@ private:
         plotterUp = false;
         osc.reset();
         
-
+        
         
         //set strage
         int sh = STORAGE_OF_FILINGS*2;
@@ -188,7 +188,7 @@ private:
         drawText("grayscale image of people from camera");
         ofPopMatrix();
         
-
+        
         
         /*******************
          sobel filter
@@ -384,11 +384,7 @@ private:
                     }
                 }
                 
-                
-                
-                //cout << "howHungryPerCell[0] : " << howHungryPerCell[0] << endl;
-                //cout << "isExpand[0] : " << isExpand[0] << endl;
-                
+                                
                 bool isHungry, isChangeNextPoint;
                 
                 //if the center cell is not need to be moved, go to search next point
@@ -422,13 +418,13 @@ private:
                     
                     if(movePositionIndex < 0){ // no longer move magnet anywhere(there isn't the hungry point)
                         movePositionIndex = MAX(0, movePositionIndex);
+                        
                         if(firstWallIndex > 0){ //there is the wall near the target cell
-                            cout << "first wall index : " << firstWallIndex << endl;
-                            if(isHungry){}
-                            else{}
+                            isChangeNextPoint = false;
                         }else{
                             isChangeNextPoint = true; //search the different point
                         }
+                        isBreakWhile = true;
                     }
                     
                     
@@ -457,7 +453,15 @@ private:
                     if(isBreakWhile){
                         plotterPosition = nextPosition;// + ofVec2f(CELL/2, CELL/2);
                         
-                        if(isHungry){
+                        if(firstWallIndex > 0){
+                            cout << "first wall index : " << firstWallIndex << endl;
+                            if(isHungry){
+                                
+                            }
+                            else{
+                                
+                            }
+                        }else if(isHungry){
                             moveToFirst = nextPosition + aroundCells[movePositionIndex]*_CELL_SIZE;//  + ofVec2f(CELL/2, CELL/2);
                             moveToSecond = nextPosition;//  + ofVec2f(CELL/2, CELL/2);
                             
