@@ -16,7 +16,7 @@
 
 //#define DEBUG
 //#define REALTIME_CAPTURE_PEOPLE
-//#define REALTIME_CAPTURE_IRONFILINGS
+#define REALTIME_CAPTURE_IRONFILINGS
 #define WIDTH_PROCESS 640
 #define HEIGHT_PROCESS 480
 #define WIDTH_VIEW 640
@@ -32,9 +32,9 @@ class TimeManager{
     float startTime = 0;
     float timeLimit = 0;
 public:
-    void start(float t){
+    void start(float dist){
         startTime = ofGetElapsedTimef();
-        timeLimit = t;
+        timeLimit = dist/(float)UNIT_DISRANCE_PER_SECOND;
 #ifdef DEBUG
         cout << "set time : left -> " << timeLimit << endl;
 #endif
@@ -67,7 +67,7 @@ private:
     int CELL_SIZE;
     ofRectangle storageOfFilings;
     
-    ofImage horizonalSobel, verticalSobel;
+    ofImage horizonalSobel, verticalSobel, thresholdImg;
     
     //--------------------------------------------------------------
     void init(){
@@ -82,6 +82,7 @@ private:
         
         horizonalSobel.allocate(WIDTH_PROCESS, HEIGHT_PROCESS, OF_IMAGE_COLOR);
         verticalSobel.allocate(WIDTH_PROCESS, HEIGHT_PROCESS, OF_IMAGE_COLOR);
+        thresholdImg.allocate(WIDTH_PROCESS, HEIGHT_PROCESS, OF_IMAGE_COLOR);
         
 #ifdef REALTIME_CAPTURE_PEOPLE
         peopleCamera.setVerbose(true);
@@ -146,8 +147,13 @@ private:
 #endif
         if( (!isTrimmingMode)&&(!isColorDebugMode) && (!isCalibrationMode)){
             if(timeManager.getLeftTime() == 0){
-                int nx = ofRandom(WIDTH_PROCESS);
-                int ny = ofRandom(HEIGHT_PROCESS);
+                const int minX = storageOfFilings.getX();
+                const int maxX = minX + storageOfFilings.getWidth();
+                const int minY = storageOfFilings.getY();
+                const int maxY = minY + storageOfFilings.getHeight();
+
+                int nx = ofRandom(minX, maxX);//ofRandom(WIDTH_PROCESS);
+                int ny = ofRandom(minY, maxY);//ofRandom(HEIGHT_PROCESS);
                 callCalculateImageColor(ofVec2f(nx, ny));
             }
         }
@@ -173,6 +179,7 @@ private:
         goalImage.begin();
         grayPeopleImage = colorPeopleImage;
         grayPeopleImage.contrastStretch();
+        grayPeopleImage.threshold(230);
         int x = storageOfFilings.getX();
         int y = storageOfFilings.getY();
         int w = storageOfFilings.getWidth();
@@ -338,6 +345,7 @@ private:
             bool isExpand[9] = {true, true, true, true, true, true, true, true, true};
             int firstWallIndex = -1; //the place of iron filings storage
             
+            cout << "---------" << endl;
             int loop = 0;
             while(loop < RANGE_SEARCH_CELL){
                 bool isBreakWhile = false; //break while or not
@@ -361,7 +369,12 @@ private:
                 const int _CELL_SIZE = CELL + 2*loop;
                 const int HALF_CELL = _CELL_SIZE/2;
                 
+                const int minX = storageOfFilings.getX();
+                const int maxX = minX + storageOfFilings.getWidth();
+                const int minY = storageOfFilings.getY();
+                const int maxY = minY + storageOfFilings.getHeight();
                 
+                //calcurate the colors of all cells
                 int counter = 0;
                 for(int i=0; i<NUM_CELLS_AROUND_TARGET; i++){ //check all cell
                     if(isExpand[i]){
@@ -370,7 +383,8 @@ private:
                             for(int x=-HALF_CELL; x<HALF_CELL; x++){
                                 int px = nextPosition.x + aroundCells[i].x*_CELL_SIZE + x;
                                 int py = nextPosition.y + aroundCells[i].y*_CELL_SIZE + y;
-                                if(px < 0 || px >= WIDTH_PROCESS || py < 0 || py >= HEIGHT_PROCESS){ //attack wall
+                                //if(px < 0 || px >= WIDTH_PROCESS || py < 0 || py >= HEIGHT_PROCESS){ //attack wall
+                                if(px <= minX || px > maxX || py <= minY || py > maxY){ //attack wall
                                     isExpand[i] = false;
                                     if(firstWallIndex < 0) firstWallIndex = i;
                                 }
@@ -384,15 +398,19 @@ private:
                     }
                 }
                 
-                                
+                
                 bool isHungry, isChangeNextPoint;
                 
                 //if the center cell is not need to be moved, go to search next point
                 howHungryPerCell[0] == 0 ? isChangeNextPoint = true : isChangeNextPoint = false;
-                if(!isExpand[0]){
-                    isBreakWhile = true;
-                    isChangeNextPoint = true;
-                }
+                
+                
+                
+                 if(!isExpand[0]){
+                     isBreakWhile = true;
+                     isChangeNextPoint = true;
+                 }
+                
                 
                 if(!isChangeNextPoint){
                     howHungryPerCell[0] > 0 ? isHungry = true : isHungry = false;
@@ -414,53 +432,60 @@ private:
                     }
                     
                     
-                    //cout << "movePositionIndex : " << movePositionIndex << endl;
                     
                     if(movePositionIndex < 0){ // no longer move magnet anywhere(there isn't the hungry point)
-                        movePositionIndex = MAX(0, movePositionIndex);
                         
-                        if(firstWallIndex > 0){ //there is the wall near the target cell
+                        if(firstWallIndex > 0){//there is the wall near the target cell
                             isChangeNextPoint = false;
-                        }else{
-                            isChangeNextPoint = true; //search the different point
+                        }else{ //search the different point
+                            isChangeNextPoint = true;
                         }
+                        movePositionIndex = MAX(0, movePositionIndex);
                         isBreakWhile = true;
+                        
+                    }else{ //check whether need to expand the serching area or not (continue while)
+                        if(isHungry){
+                            if(howHungryPerCell[movePositionIndex] == 0){
+                                isExpand[movePositionIndex] = false;
+                            }
+                            else if( howHungryPerCell[movePositionIndex] > 0){
+                                isBreakWhile = false;
+                            }else{
+                                isBreakWhile = true;
+                            }
+                        }else{
+                            if(howHungryPerCell[movePositionIndex] == 0){
+                                isExpand[movePositionIndex] = false;
+                            }
+                            else if( howHungryPerCell[movePositionIndex] < 0){
+                                isBreakWhile = false;
+                            }else{
+                                isBreakWhile = true;
+                            }
+                        }
+                        
                     }
                     
                     
                     
-                    //check whether need to expand the serching area or not (continue while)
-                    if(isHungry){
-                        if(howHungryPerCell[movePositionIndex] == 0){
-                            isExpand[movePositionIndex] = false;
-                        }
-                        else if( howHungryPerCell[movePositionIndex] > 0){
-                            isBreakWhile = false;
-                        }else{
-                            isBreakWhile = true;
-                        }
-                    }else{
-                        if(howHungryPerCell[movePositionIndex] == 0){
-                            isExpand[movePositionIndex] = false;
-                        }
-                        else if( howHungryPerCell[movePositionIndex] < 0){
-                            isBreakWhile = false;
-                        }else{
-                            isBreakWhile = true;
-                        }
-                    }
                     
                     if(isBreakWhile){
                         plotterPosition = nextPosition;// + ofVec2f(CELL/2, CELL/2);
                         
                         if(firstWallIndex > 0){
                             cout << "first wall index : " << firstWallIndex << endl;
+                            float x, y;
+                            aroundCells[firstWallIndex].x == 0 ? x = nextPosition.x : x = MAX(aroundCells[firstWallIndex].x,0)*WIDTH_PROCESS;
+                            aroundCells[firstWallIndex].y == 0 ? y = nextPosition.y : y = MAX(aroundCells[firstWallIndex].y,0)*HEIGHT_PROCESS;
+
                             if(isHungry){
-                                
+                                moveToFirst = ofVec2f(x,y);
+                                moveToSecond = nextPosition;
+                            }else{
+                                moveToFirst = nextPosition;
+                                moveToSecond = ofVec2f(x,y);
                             }
-                            else{
-                                
-                            }
+                            
                         }else if(isHungry){
                             moveToFirst = nextPosition + aroundCells[movePositionIndex]*_CELL_SIZE;//  + ofVec2f(CELL/2, CELL/2);
                             moveToSecond = nextPosition;//  + ofVec2f(CELL/2, CELL/2);
@@ -491,7 +516,7 @@ private:
                         osc.plotterDown();
                         osc.send(moveToFirst/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
                         float dist = moveToFirst.distance(nowPosition);
-                        timeManager.start(dist/(float)UNIT_DISRANCE_PER_SECOND);
+                        timeManager.start(dist);
                         
                     }
                     //cout << "break while : " << loop << endl;
@@ -509,7 +534,7 @@ private:
             
             
             float dist = moveToSecond.distance(moveToFirst);
-            timeManager.start(dist/(float)UNIT_DISRANCE_PER_SECOND);
+            timeManager.start(dist);
             
             moveToFirst = moveToSecond;
         }
