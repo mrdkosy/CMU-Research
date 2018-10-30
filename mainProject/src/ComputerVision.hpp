@@ -16,7 +16,7 @@
 
 //#define DEBUG
 //#define REALTIME_CAPTURE_PEOPLE
-#define REALTIME_CAPTURE_IRONFILINGS
+//#define REALTIME_CAPTURE_IRONFILINGS
 #define WIDTH_PROCESS 640
 #define HEIGHT_PROCESS 480
 #define WIDTH_VIEW 640
@@ -189,6 +189,7 @@ private:
          goal image
          *******************/
         goalImage.begin();
+        ofClear(255, 255);
         grayPeopleImage = colorPeopleImage;
         grayPeopleImage.contrastStretch();
         grayPeopleImage.threshold(230);
@@ -276,9 +277,9 @@ private:
         //drawGrid();
         drawPlotterInformation();
         if(isColorDebugMode || isCalibrationMode) searchColorByMouse();
+        drawStorage();
         drawText("cv image of iron filings");
-        ofPopMatrix();
-        
+        ofPopMatrix();        
         
         
     }
@@ -421,7 +422,8 @@ private:
                 
                 if(!isExpand[0]){
                     isBreakWhile = true;
-                    isChangeNextPoint = true;
+                    //isChangeNextPoint = true;
+                    cout << "firstWallIndex : " << firstWallIndex << endl;
                 }
                 
                 
@@ -448,32 +450,42 @@ private:
                     
                     if(movePositionIndex < 0){ // no longer move magnet anywhere(there isn't the hungry point)
                         
+                        cout << "movePositionIndex < 0" << endl;
                         if(firstWallIndex > 0){//there is the wall near the target cell
                             isChangeNextPoint = false;
+                            cout << "first wall index0 :" << firstWallIndex << endl;
+                            
                         }else{ //search the different point
                             isChangeNextPoint = true;
+                            cout << "first wall index0 :" << firstWallIndex << endl;
                         }
+                        
                         movePositionIndex = MAX(0, movePositionIndex);
                         isBreakWhile = true;
                         
+                        
                     }else{ //check whether need to expand the serching area or not (continue while)
-                        if(isHungry){
-                            if(howHungryPerCell[movePositionIndex] == 0){
-                                isExpand[movePositionIndex] = false;
-                            }
-                            else if( howHungryPerCell[movePositionIndex] > 0){
-                                isBreakWhile = false;
+                        if(isExpand[0]){
+                            if(isHungry){
+                                if(howHungryPerCell[movePositionIndex] == 0){
+                                    //isExpand[movePositionIndex] = false;
+                                    isBreakWhile = false;
+                                }
+                                else if( howHungryPerCell[movePositionIndex] > 0){
+                                    isBreakWhile = false;
+                                }else{
+                                    isBreakWhile = true;
+                                }
                             }else{
-                                isBreakWhile = true;
-                            }
-                        }else{
-                            if(howHungryPerCell[movePositionIndex] == 0){
-                                isExpand[movePositionIndex] = false;
-                            }
-                            else if( howHungryPerCell[movePositionIndex] < 0){
-                                isBreakWhile = false;
-                            }else{
-                                isBreakWhile = true;
+                                if(howHungryPerCell[movePositionIndex] == 0){
+                                    //isExpand[movePositionIndex] = false;
+                                    isBreakWhile = false;
+                                }
+                                else if( howHungryPerCell[movePositionIndex] < 0){
+                                    isBreakWhile = false;
+                                }else{
+                                    isBreakWhile = true;
+                                }
                             }
                         }
                     }
@@ -482,12 +494,15 @@ private:
                     
                     
                     if(isBreakWhile){
+                        
+                        cout << "this is 'break while'" << endl;
+                        
                         plotterPosition = nextPosition;// + ofVec2f(CELL/2, CELL/2);
                         
                         if(firstWallIndex > 0){ //wether manage the storage of filings or not
-#ifdef DEBUG
-                            cout << "first wall index : " << firstWallIndex << endl;
-#endif
+
+                            cout << "first wall index1 : " << firstWallIndex << endl;
+
                             
                             float x, y;
                             aroundCells[firstWallIndex].x == 0 ? x = nextPosition.x : x = MAX(aroundCells[firstWallIndex].x,0)*WIDTH_PROCESS;
@@ -501,14 +516,17 @@ private:
                                 moveToSecond = ofVec2f(x,y);
                             }
                             isManageStorageMode = true;
+
                             
                             
                         }else if(isHungry){
+                            cout << "hungry" << endl;
                             moveToFirst = nextPosition + aroundCells[movePositionIndex]*_CELL_SIZE;// + ofVec2f(CELL/2, CELL/2);
                             moveToSecond = nextPosition;// + ofVec2f(CELL/2, CELL/2);
                             
                             
                         }else{
+                            cout << "full" << endl;
                             moveToFirst = nextPosition;// + ofVec2f(CELL/2, CELL/2);
                             moveToSecond = nextPosition + aroundCells[movePositionIndex]*_CELL_SIZE;// + ofVec2f(CELL/2, CELL/2);
                         }
@@ -523,7 +541,9 @@ private:
                         }
                     }
                     
-                }else{ isBreakWhile = true; }
+                }else{
+                    isBreakWhile = true;
+                }
                 
                 CELL_SIZE = _CELL_SIZE;
                 
@@ -534,11 +554,11 @@ private:
                         osc.send(moveToFirst/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
                         float dist = moveToFirst.distance(nowPosition);
                         timeManager.start(dist);
+                        cout << "isManageStorageMode : " << isManageStorageMode << endl;
                         if(isManageStorageMode) STEP = 2;
                         else STEP = 1;
                         
                     }
-                    //cout << "break while : " << loop << endl;
                     break;
                 }
                 
@@ -576,6 +596,9 @@ private:
         bool isMoveFilingsToWhiteArea = false;
         if( minX <= firstPosition.x && firstPosition.x < maxX && minY <= firstPosition.y && firstPosition.y < maxX){
             isMoveFilingsToWhiteArea = true;
+            cout << "look for white area" << endl;
+        }else{
+            cout << "look for black area" << endl;
         }
         
         if(isMoveFilingsToWhiteArea){
@@ -586,10 +609,22 @@ private:
                 osc.send(secondPosition/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
                 float dist = firstPosition.distance(secondPosition);
                 timeManager.start(dist);
+                
                 moveInStorage = secondPosition;
+                
+                ofVec2f p = secondPosition;
+                if(secondPosition.x <= minX) p.x  = storageWidth/2;
+                if(secondPosition.x >= maxX) p.x = maxX + storageWidth/2;
+                if(secondPosition.y <= minY) p.y = storageHeight/2;
+                if(secondPosition.y >= maxY) p.y = maxY + storageHeight/2;
+                    
+                stockPosition.clear();
+                stockPosition.push_back(p);
+                
                 STEP = 3;
                 
-            }else if(STEP == 3){
+            }
+            if(STEP == 3){
                 int i=0;
                 
                 int d = 1;
@@ -599,42 +634,37 @@ private:
                 if(moveToSecond.x < minX || maxX <= moveToSecond.x){
                     direction.x = 0;
                     direction.y = d;
+                }else if(moveToSecond.y < minY || maxY <= moveToSecond.y){
+                    direction.x = d;
+                    direction.y = 0;
                 }
 
                 
                 ofPixels realPixels;
                 realIronFilingsImage.readToPixels(realPixels);
                 
-                while(true){
+                while(i<50){
                     
                     int _minX, _maxX, _minY, _maxY;
                     
-                    if(moveInStorage.x < minX){
-                        moveInStorage.y = secondPosition.y + i * direction.y;
-                        _minX = 0;
-                        _maxX = minX;
-                        _minY = moveInStorage.y;
-                        _maxY = moveInStorage.y + storageWidth;
-                    }else if(maxX <= moveInStorage.x){
-                        moveInStorage.y = secondPosition.y + i * direction.y;
-                        _minX = maxX;
-                        _maxX = WIDTH_PROCESS;
-                        _minY = moveInStorage.y;
-                        _maxY = moveInStorage.y + storageWidth;
-                    }else if(moveInStorage.y < minY){
-                        moveInStorage.x = secondPosition.x + i * direction.x;
-                        _minX = moveInStorage.x;
-                        _maxX = moveInStorage.x + storageHeight;
-                        _minY = 0;
-                        _maxY = minY;
-                    }else if(maxY <= moveInStorage.y){
-                        moveInStorage.x = secondPosition.x + i * direction.x;
-                        _minX = moveInStorage.x;
-                        _maxX = moveInStorage.x + storageHeight;
-                        _minY = maxY;
-                        _maxY = HEIGHT_PROCESS;
-                    }
+                    int last_index = stockPosition.size() - 1;
+                    ofVec2f pos = stockPosition.at(last_index);
                     
+                    
+                    ofVec2f mul = ofVec2f(1-abs(direction.x), 1-abs(direction.y))*ofVec2f(storageWidth, storageHeight);
+                    int len = mul.length();
+                    //cout << "mul : " << mul << endl;
+                    //cout << "mul length : " << len << endl;
+                    
+                    ofVec2f pul = ofVec2f(1-abs(direction.x), 1-abs(direction.y))*i;
+                    
+                    //cout << "pul : " << pul << endl;
+                    _minX = pos.x - len/2 + pul.x;
+                    _maxX = pos.x + len/2 + pul.x;
+                    _minY = pos.y - len/2 + pul.y;
+                    _maxY = pos.y + len/2 + pul.y;
+                    
+
                     
                     int blackScale = 0;
                     int counter = 0;
@@ -649,13 +679,16 @@ private:
                     
                     i++;
                 }
-                
             }
             
+            isManageStorageMode = false;
+            STEP = 0;
+
             
         }else{
             
         }
+        
         
         if(STEP == 4){
             
