@@ -58,7 +58,7 @@ private:
     bool isTrimmingMode;
     vector<ofVec2f> trimmedPosition;
     vector<int> cellColor;
-    ofVec2f plotterPosition, moveToFirst, moveToSecond; //plotter position
+    ofVec2f plotterPosition, moveToFirst, moveToSecond, moveInStorage; //plotter position
     bool plotterUp; //plotter stick iron filings or not
     int howHungryPerCell[9] = {0,0,0,0,0,0,0,0,0};
     TimeManager timeManager;
@@ -66,6 +66,9 @@ private:
     bool isCalibrationMode; //calibration
     int CELL_SIZE;
     ofRectangle storageOfFilings;
+    bool isManageStorageMode;
+    int STEP;
+    vector<ofVec2f> stockPosition;
     
     ofImage horizonalSobel, verticalSobel, thresholdImg;
     
@@ -120,6 +123,7 @@ private:
         plotterPosition = ofVec2f(0,0);
         moveToFirst = plotterPosition;
         moveToSecond = plotterPosition;
+        moveInStorage = plotterPosition;
         plotterUp = false;
         osc.reset();
         
@@ -133,6 +137,8 @@ private:
         storageOfFilings.setPosition(sw/2, sh/2);
         storageOfFilings.setSize(w, h);
         
+        isManageStorageMode = false;
+        STEP = 0;
         
         
     }
@@ -145,16 +151,22 @@ private:
 #ifdef REALTIME_CAPTURE_IRONFILINGS
         ironFilingsCamera.update();
 #endif
+        
         if( (!isTrimmingMode)&&(!isColorDebugMode) && (!isCalibrationMode)){
             if(timeManager.getLeftTime() == 0){
                 const int minX = storageOfFilings.getX();
                 const int maxX = minX + storageOfFilings.getWidth();
                 const int minY = storageOfFilings.getY();
                 const int maxY = minY + storageOfFilings.getHeight();
-
-                int nx = ofRandom(minX, maxX);//ofRandom(WIDTH_PROCESS);
-                int ny = ofRandom(minY, maxY);//ofRandom(HEIGHT_PROCESS);
-                callCalculateImageColor(ofVec2f(nx, ny));
+                
+                if(!isManageStorageMode){
+                    int nx = ofRandom(minX, maxX);//ofRandom(WIDTH_PROCESS);
+                    int ny = ofRandom(minY, maxY);//ofRandom(HEIGHT_PROCESS);
+                    callCalculateImageColor(ofVec2f(nx, ny));
+                }else{ //manage the storage of filings
+                    calculateFilingsStorage();
+                }
+                
             }
         }
     }
@@ -332,7 +344,8 @@ private:
     void calculateImageColor(ofTexture& goal, ofTexture& real, ofVec2f np){
         
         
-        if( moveToFirst == moveToSecond ){ //caluculate next position
+        //if( moveToFirst == moveToSecond ){ //caluculate next position
+        if( STEP == 0 ){ //caluculate next position
             const ofVec2f nowPosition = moveToSecond;
             
             ofPixels goalPixels, realPixels;
@@ -384,7 +397,7 @@ private:
                                 int px = nextPosition.x + aroundCells[i].x*_CELL_SIZE + x;
                                 int py = nextPosition.y + aroundCells[i].y*_CELL_SIZE + y;
                                 //if(px < 0 || px >= WIDTH_PROCESS || py < 0 || py >= HEIGHT_PROCESS){ //attack wall
-                                if(px <= minX || px > maxX || py <= minY || py > maxY){ //attack wall
+                                if(px < minX || px >= maxX || py < minY || py >= maxY){ //attack wall
                                     isExpand[i] = false;
                                     if(firstWallIndex < 0) firstWallIndex = i;
                                 }
@@ -406,10 +419,10 @@ private:
                 
                 
                 
-                 if(!isExpand[0]){
-                     isBreakWhile = true;
-                     isChangeNextPoint = true;
-                 }
+                if(!isExpand[0]){
+                    isBreakWhile = true;
+                    isChangeNextPoint = true;
+                }
                 
                 
                 if(!isChangeNextPoint){
@@ -463,7 +476,6 @@ private:
                                 isBreakWhile = true;
                             }
                         }
-                        
                     }
                     
                     
@@ -472,12 +484,15 @@ private:
                     if(isBreakWhile){
                         plotterPosition = nextPosition;// + ofVec2f(CELL/2, CELL/2);
                         
-                        if(firstWallIndex > 0){
+                        if(firstWallIndex > 0){ //wether manage the storage of filings or not
+#ifdef DEBUG
                             cout << "first wall index : " << firstWallIndex << endl;
+#endif
+                            
                             float x, y;
                             aroundCells[firstWallIndex].x == 0 ? x = nextPosition.x : x = MAX(aroundCells[firstWallIndex].x,0)*WIDTH_PROCESS;
                             aroundCells[firstWallIndex].y == 0 ? y = nextPosition.y : y = MAX(aroundCells[firstWallIndex].y,0)*HEIGHT_PROCESS;
-
+                            
                             if(isHungry){
                                 moveToFirst = ofVec2f(x,y);
                                 moveToSecond = nextPosition;
@@ -485,15 +500,17 @@ private:
                                 moveToFirst = nextPosition;
                                 moveToSecond = ofVec2f(x,y);
                             }
+                            isManageStorageMode = true;
+                            
                             
                         }else if(isHungry){
-                            moveToFirst = nextPosition + aroundCells[movePositionIndex]*_CELL_SIZE;//  + ofVec2f(CELL/2, CELL/2);
-                            moveToSecond = nextPosition;//  + ofVec2f(CELL/2, CELL/2);
+                            moveToFirst = nextPosition + aroundCells[movePositionIndex]*_CELL_SIZE;// + ofVec2f(CELL/2, CELL/2);
+                            moveToSecond = nextPosition;// + ofVec2f(CELL/2, CELL/2);
                             
                             
                         }else{
-                            moveToFirst = nextPosition;//  + ofVec2f(CELL/2, CELL/2);
-                            moveToSecond = nextPosition + aroundCells[movePositionIndex]*_CELL_SIZE;//  + ofVec2f(CELL/2, CELL/2);
+                            moveToFirst = nextPosition;// + ofVec2f(CELL/2, CELL/2);
+                            moveToSecond = nextPosition + aroundCells[movePositionIndex]*_CELL_SIZE;// + ofVec2f(CELL/2, CELL/2);
                         }
                         
                         //tiny
@@ -501,8 +518,8 @@ private:
                         direction.x = ofSign(direction.x);
                         direction.y = ofSign(direction.y);
                         if( HOW_TINY != 0 ){
-                            moveToSecond -= direction*ofVec2f(_CELL_SIZE/(float)HOW_TINY, _CELL_SIZE/(float)HOW_TINY);
-                            moveToFirst += direction*ofVec2f(_CELL_SIZE/(float)HOW_TINY, _CELL_SIZE/(float)HOW_TINY);
+                            moveToSecond -= direction*ofVec2f( _CELL_SIZE/(float)HOW_TINY, _CELL_SIZE/(float)HOW_TINY );
+                            moveToFirst += direction*ofVec2f( _CELL_SIZE/(float)HOW_TINY, _CELL_SIZE/(float)HOW_TINY );
                         }
                     }
                     
@@ -517,6 +534,8 @@ private:
                         osc.send(moveToFirst/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
                         float dist = moveToFirst.distance(nowPosition);
                         timeManager.start(dist);
+                        if(isManageStorageMode) STEP = 2;
+                        else STEP = 1;
                         
                     }
                     //cout << "break while : " << loop << endl;
@@ -526,7 +545,8 @@ private:
                 loop++;
             }
             
-        }else{ //plotter move to "moveToFirst"
+        }else if(STEP == 1){ //plotter move to "moveToFirst"
+            
             
             plotterUp = true;
             osc.plotterUp();
@@ -536,9 +556,114 @@ private:
             float dist = moveToSecond.distance(moveToFirst);
             timeManager.start(dist);
             
-            moveToFirst = moveToSecond;
+            //moveToFirst = moveToSecond;
+            STEP = 0;
         }
     }
+    //--------------------------------------------------------------
+    void calculateFilingsStorage(){
+        
+        const ofVec2f firstPosition = moveToFirst;
+        const ofVec2f secondPosition = moveToSecond;
+        
+        const int minX = storageOfFilings.getX();
+        const int maxX = minX + storageOfFilings.getWidth();
+        const int minY = storageOfFilings.getY();
+        const int maxY = minY + storageOfFilings.getHeight();
+        const int storageWidth = minX;
+        const int storageHeight = minY;
+        
+        bool isMoveFilingsToWhiteArea = false;
+        if( minX <= firstPosition.x && firstPosition.x < maxX && minY <= firstPosition.y && firstPosition.y < maxX){
+            isMoveFilingsToWhiteArea = true;
+        }
+        
+        if(isMoveFilingsToWhiteArea){
+            if(STEP == 2){
+                
+                plotterUp = true;
+                osc.plotterUp();
+                osc.send(secondPosition/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
+                float dist = firstPosition.distance(secondPosition);
+                timeManager.start(dist);
+                moveInStorage = secondPosition;
+                STEP = 3;
+                
+            }else if(STEP == 3){
+                int i=0;
+                
+                int d = 1;
+                if(int(moveToFirst.x)%2 == 0) d = -1;
+                
+                ofVec2f direction;
+                if(moveToSecond.x < minX || maxX <= moveToSecond.x){
+                    direction.x = 0;
+                    direction.y = d;
+                }
+
+                
+                ofPixels realPixels;
+                realIronFilingsImage.readToPixels(realPixels);
+                
+                while(true){
+                    
+                    int _minX, _maxX, _minY, _maxY;
+                    
+                    if(moveInStorage.x < minX){
+                        moveInStorage.y = secondPosition.y + i * direction.y;
+                        _minX = 0;
+                        _maxX = minX;
+                        _minY = moveInStorage.y;
+                        _maxY = moveInStorage.y + storageWidth;
+                    }else if(maxX <= moveInStorage.x){
+                        moveInStorage.y = secondPosition.y + i * direction.y;
+                        _minX = maxX;
+                        _maxX = WIDTH_PROCESS;
+                        _minY = moveInStorage.y;
+                        _maxY = moveInStorage.y + storageWidth;
+                    }else if(moveInStorage.y < minY){
+                        moveInStorage.x = secondPosition.x + i * direction.x;
+                        _minX = moveInStorage.x;
+                        _maxX = moveInStorage.x + storageHeight;
+                        _minY = 0;
+                        _maxY = minY;
+                    }else if(maxY <= moveInStorage.y){
+                        moveInStorage.x = secondPosition.x + i * direction.x;
+                        _minX = moveInStorage.x;
+                        _maxX = moveInStorage.x + storageHeight;
+                        _minY = maxY;
+                        _maxY = HEIGHT_PROCESS;
+                    }
+                    
+                    
+                    int blackScale = 0;
+                    int counter = 0;
+                    for(int y=_minY; y<_maxY; y++){
+                        for(int x=_minX; x<_maxX; x++){
+                            ofColor c = realPixels.getColor(x,y);
+                            blackScale += c.r;
+                            counter++;
+                        }
+                    }
+                    blackScale /= counter;
+                    
+                    i++;
+                }
+                
+            }
+            
+            
+        }else{
+            
+        }
+        
+        if(STEP == 4){
+            
+        }
+        
+        
+    }
+    
     //--------------------------------------------------------------
     void drawStorage(){
         ofPushStyle();
@@ -557,6 +682,7 @@ private:
         ofSetLineWidth(3);
         ofDrawRectangle(moveToSecond.x, moveToSecond.y, CELL_SIZE, CELL_SIZE);
         ofDrawRectangle(moveToFirst.x, moveToFirst.y, CELL_SIZE, CELL_SIZE);
+        if(isManageStorageMode) ofDrawRectangle(moveInStorage.x, moveInStorage.y, STORAGE_OF_FILINGS, STORAGE_OF_FILINGS);
         
         ofVec2f aroundCells[9] = {
             ofVec2f(0,0), //center
@@ -581,7 +707,6 @@ private:
     }
     //--------------------------------------------------------------
     void drawText(string st){
-        
         ofDrawBitmapStringHighlight(st,ofVec2f(10,20), ofColor(170, 0, 0), ofColor(255));
     }
     //--------------------------------------------------------------
@@ -621,7 +746,6 @@ public:
                 trimmedPosition.clear();
                 trimmedArea.setSize(0,0);
             }
-            
             ofVec2f p = plotterPosition/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS); //0-1
             float plus = 0.001;
             
@@ -700,9 +824,8 @@ public:
             int mx = x - WIDTH_VIEW;
             int my = y - HEIGHT_VIEW;
             if(0 <= mx && mx < WIDTH_VIEW && 0 <= my && my < HEIGHT_VIEW){
-                //mx = floor(mx/CELL)*CELL;
-                //my = floor(my/CELL)*CELL;
-                moveToFirst = moveToSecond;
+                //moveToFirst = moveToSecond;
+                STEP = 0;
                 callCalculateImageColor(ofVec2f(mx, my));
             }
         }
