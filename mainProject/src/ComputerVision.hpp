@@ -23,6 +23,7 @@
 #define HEIGHT_VIEW (((float)HEIGHT_PROCESS/WIDTH_PROCESS)*WIDTH_VIEW)
 #define UNIT_DISRANCE_PER_SECOND (WIDTH_PROCESS/8.5)
 #define CELL 20 //2,4,8,10,16,20,32,40,50
+#define STORAGE_OF_FILINGS 20
 #define RANGE_SEARCH_CELL 200
 #define NUM_CELLS_AROUND_TARGET 5 //5 or 9
 #define HOW_TINY 0 //min:2 max:cell 0:just center
@@ -64,6 +65,7 @@ private:
     bool isColorDebugMode = false; //you can search the color by your mouse
     bool isCalibrationMode; //calibration
     int CELL_SIZE;
+    ofRectangle storageOfFilings;
     
     ofImage horizonalSobel, verticalSobel;
     
@@ -120,6 +122,18 @@ private:
         plotterUp = false;
         osc.reset();
         
+
+        
+        //set strage
+        int sh = STORAGE_OF_FILINGS*2;
+        int sw = ((WIDTH_PROCESS/(float)HEIGHT_PROCESS)*STORAGE_OF_FILINGS)*2;
+        float h = HEIGHT_PROCESS - sh;
+        float w = WIDTH_PROCESS - sw;
+        storageOfFilings.setPosition(sw/2, sh/2);
+        storageOfFilings.setSize(w, h);
+        
+        
+        
     }
     //--------------------------------------------------------------
     void update(){
@@ -159,18 +173,22 @@ private:
         goalImage.begin();
         grayPeopleImage = colorPeopleImage;
         grayPeopleImage.contrastStretch();
-        grayPeopleImage.draw(0,0);
+        int x = storageOfFilings.getX();
+        int y = storageOfFilings.getY();
+        int w = storageOfFilings.getWidth();
+        int h = storageOfFilings.getHeight();
+        grayPeopleImage.draw(x, y, w, h);
         goalImage.end();
         
         ofPushMatrix();
         ofTranslate(WIDTH_VIEW, 0);
         goalImage.draw(0, 0, WIDTH_VIEW, HEIGHT_VIEW);
         drawPlotterInformation();
+        drawStorage();
         drawText("grayscale image of people from camera");
-        
         ofPopMatrix();
         
-        
+
         
         /*******************
          sobel filter
@@ -200,7 +218,7 @@ private:
         verticalSobel.draw(0, 0, 400, 300);
         drawText("vertical sobel");
         ofPopMatrix();
-
+        
         
     }
     
@@ -242,8 +260,8 @@ private:
         drawText("cv image of iron filings");
         ofPopMatrix();
         
-    
-
+        
+        
     }
     //--------------------------------------------------------------
     void searchColorByMouse(){
@@ -257,7 +275,7 @@ private:
             ofDrawBitmapString("you can search the cell color by your mouse", 180, HEIGHT_VIEW/2);
         if(isCalibrationMode)
             ofDrawBitmapString("calibraion mode", 180, HEIGHT_VIEW/2);
-            ofPopStyle();
+        ofPopStyle();
     }
     //--------------------------------------------------------------
     void trimImage(){
@@ -317,8 +335,8 @@ private:
             const ofVec2f nextPosition = np; //ofVec2f(nx,ny);
             
             
-            
             bool isExpand[9] = {true, true, true, true, true, true, true, true, true};
+            int firstWallIndex = -1; //the place of iron filings storage
             
             int loop = 0;
             while(loop < RANGE_SEARCH_CELL){
@@ -352,7 +370,10 @@ private:
                             for(int x=-HALF_CELL; x<HALF_CELL; x++){
                                 int px = nextPosition.x + aroundCells[i].x*_CELL_SIZE + x;
                                 int py = nextPosition.y + aroundCells[i].y*_CELL_SIZE + y;
-                                if(px < 0 || px >= WIDTH_PROCESS || py < 0 || py >= HEIGHT_PROCESS) isExpand[i] = false;
+                                if(px < 0 || px >= WIDTH_PROCESS || py < 0 || py >= HEIGHT_PROCESS){ //attack wall
+                                    isExpand[i] = false;
+                                    if(firstWallIndex < 0) firstWallIndex = i;
+                                }
                                 goalGrayScalePerCell[i] += (255 - MIN(goalPixels.getColor(px, py).r, 230) );
                                 realGrayScalePerCell[i] += (255 - MIN(realPixels.getColor(px, py).r, 230) );
                                 counter++;
@@ -364,7 +385,7 @@ private:
                 }
                 
                 
-            
+                
                 //cout << "howHungryPerCell[0] : " << howHungryPerCell[0] << endl;
                 //cout << "isExpand[0] : " << isExpand[0] << endl;
                 
@@ -401,8 +422,13 @@ private:
                     
                     if(movePositionIndex < 0){ // no longer move magnet anywhere(there isn't the hungry point)
                         movePositionIndex = MAX(0, movePositionIndex);
-                        isChangeNextPoint = true; //search the different point
-                        
+                        if(firstWallIndex > 0){ //there is the wall near the target cell
+                            cout << "first wall index : " << firstWallIndex << endl;
+                            if(isHungry){}
+                            else{}
+                        }else{
+                            isChangeNextPoint = true; //search the different point
+                        }
                     }
                     
                     
@@ -485,16 +511,12 @@ private:
         }
     }
     //--------------------------------------------------------------
-    ofVec2f judgeEdgeCell(ofVec2f cell){ // cell is plotterPosition
-        cell -= ofVec2f(CELL/2, CELL/2);
-        
-        for(int y=0; y<HEIGHT_PROCESS; y+=CELL){
-            for(int x=0; x<WIDTH_PROCESS; x+=CELL){
-                for(int i=0; i<CELL; i++){
-                    
-                }
-            }
-        }
+    void drawStorage(){
+        ofPushStyle();
+        ofSetColor(0, 0, 150);
+        ofNoFill();
+        ofDrawRectangle(storageOfFilings);
+        ofPopStyle();
     }
     //--------------------------------------------------------------
     void drawPlotterInformation(){
@@ -630,7 +652,7 @@ public:
                     
                     if(trimmedPosition.size() == 1){
                         _x = ((float)WIDTH_PROCESS/HEIGHT_PROCESS)*(_y-trimmedPosition[0].y) + trimmedPosition[0].x;
-//                        _y = ((float)HEIGHT_PROCESS/WIDTH_PROCESS)*(_x-trimmedPosition[0].x) + trimmedPosition[0].y;
+                        //                        _y = ((float)HEIGHT_PROCESS/WIDTH_PROCESS)*(_x-trimmedPosition[0].x) + trimmedPosition[0].y;
                     }
                     trimmedPosition.push_back(ofVec2f(_x, _y));
                 }
