@@ -16,7 +16,7 @@
 
 //#define DEBUG
 //#define REALTIME_CAPTURE_PEOPLE
-//#define REALTIME_CAPTURE_IRONFILINGS
+#define REALTIME_CAPTURE_IRONFILINGS
 #define WIDTH_PROCESS 640
 #define HEIGHT_PROCESS 480
 #define WIDTH_VIEW 640
@@ -66,9 +66,10 @@ private:
     bool isCalibrationMode; //calibration
     int CELL_SIZE;
     ofRectangle storageOfFilings;
-    bool isManageStorageMode;
+    bool isManageStorageMode, isMoveFilingsToWhiteArea;
     int STEP;
     vector<ofVec2f> stockPosition;
+    int stockPositionIndex;
     
     ofImage horizonalSobel, verticalSobel, thresholdImg;
     
@@ -279,7 +280,7 @@ private:
         if(isColorDebugMode || isCalibrationMode) searchColorByMouse();
         drawStorage();
         drawText("cv image of iron filings");
-        ofPopMatrix();        
+        ofPopMatrix();
         
         
     }
@@ -500,9 +501,9 @@ private:
                         plotterPosition = nextPosition;// + ofVec2f(CELL/2, CELL/2);
                         
                         if(firstWallIndex > 0){ //wether manage the storage of filings or not
-
+                            
                             cout << "first wall index1 : " << firstWallIndex << endl;
-
+                            
                             
                             float x, y;
                             aroundCells[firstWallIndex].x == 0 ? x = nextPosition.x : x = MAX(aroundCells[firstWallIndex].x,0)*WIDTH_PROCESS;
@@ -511,12 +512,16 @@ private:
                             if(isHungry){
                                 moveToFirst = ofVec2f(x,y);
                                 moveToSecond = nextPosition;
+                                isMoveFilingsToWhiteArea = false;
+                                STEP = 2;
                             }else{
                                 moveToFirst = nextPosition;
                                 moveToSecond = ofVec2f(x,y);
+                                isMoveFilingsToWhiteArea = true;
+                                STEP = 2;
                             }
                             isManageStorageMode = true;
-
+                            
                             
                             
                         }else if(isHungry){
@@ -554,9 +559,7 @@ private:
                         osc.send(moveToFirst/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
                         float dist = moveToFirst.distance(nowPosition);
                         timeManager.start(dist);
-                        cout << "isManageStorageMode : " << isManageStorageMode << endl;
-                        if(isManageStorageMode) STEP = 2;
-                        else STEP = 1;
+                        if(!isManageStorageMode) STEP = 1;
                         
                     }
                     break;
@@ -593,78 +596,111 @@ private:
         const int storageWidth = minX;
         const int storageHeight = minY;
         
-        bool isMoveFilingsToWhiteArea = false;
-        if( minX <= firstPosition.x && firstPosition.x < maxX && minY <= firstPosition.y && firstPosition.y < maxX){
-            isMoveFilingsToWhiteArea = true;
-            cout << "look for white area" << endl;
-        }else{
-            cout << "look for black area" << endl;
-        }
         
-        if(isMoveFilingsToWhiteArea){
-            if(STEP == 2){
-                
-                plotterUp = true;
-                osc.plotterUp();
-                osc.send(secondPosition/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
-                float dist = firstPosition.distance(secondPosition);
-                timeManager.start(dist);
-                
-                moveInStorage = secondPosition;
-                
-                ofVec2f p = secondPosition;
-                if(secondPosition.x <= minX) p.x  = storageWidth/2;
-                if(secondPosition.x >= maxX) p.x = maxX + storageWidth/2;
-                if(secondPosition.y <= minY) p.y = storageHeight/2;
-                if(secondPosition.y >= maxY) p.y = maxY + storageHeight/2;
-                    
-                stockPosition.clear();
-                stockPosition.push_back(p);
-                
-                STEP = 3;
-                
+        
+        if(STEP == 2){
+            
+            stockPosition.clear();
+            
+            ofVec2f p;
+            if(isMoveFilingsToWhiteArea){
+                p = secondPosition;
+            }else{
+                stockPosition.push_back(secondPosition);
+                p = firstPosition;
             }
-            if(STEP == 3){
-                int i=0;
+            
+            if(p.x <= minX) p.x  = storageWidth/2;
+            else if(p.x >= maxX) p.x = maxX + storageWidth/2;
+            if(p.y <= minY) p.y = storageHeight/2;
+            else if(p.y >= maxY) p.y = maxY + storageHeight/2;
+            
+            
+            stockPosition.push_back(p);
+            moveInStorage = p;
+            STEP = 3;
+            
+        }
+        if(STEP == 3){
+            
+            
+            int d = 1;
+            if(int(moveToFirst.x)%2 == 0) d = -1; //just random
+            
+            
+            ofVec2f _p = stockPosition.at(stockPosition.size() - 1);
+            
+            ofVec2f direction;
+            if(_p.x < minX || maxX <= _p.x){
+                direction.x = 0;
+                direction.y = d;
+            }else if(_p.y < minY || maxY <= _p.y){
+                direction.x = d;
+                direction.y = 0;
+            }
+            
+            ofPixels realPixels;
+            realIronFilingsImage.readToPixels(realPixels);
+            
+            int i=0;
+            while(true){
+                bool isBreakWhile = false;
                 
-                int d = 1;
-                if(int(moveToFirst.x)%2 == 0) d = -1;
+                int _minX, _maxX, _minY, _maxY;
                 
-                ofVec2f direction;
-                if(moveToSecond.x < minX || maxX <= moveToSecond.x){
-                    direction.x = 0;
-                    direction.y = d;
-                }else if(moveToSecond.y < minY || maxY <= moveToSecond.y){
-                    direction.x = d;
-                    direction.y = 0;
-                }
-
+                int last_index = stockPosition.size() - 1;
+                ofVec2f pos = stockPosition.at(last_index);
                 
-                ofPixels realPixels;
-                realIronFilingsImage.readToPixels(realPixels);
+                ofVec2f norm = ofVec2f(1-abs(direction.x), 1-abs(direction.y));
+                ofVec2f mul = norm*ofVec2f(storageWidth, storageHeight);
+                int len = mul.length();
+                ofVec2f pul = direction * i;
                 
-                while(i<50){
+                
+                _minX = pos.x - len/2 + pul.x;
+                _maxX = pos.x + len/2 + pul.x;
+                _minY = pos.y - len/2 + pul.y;
+                _maxY = pos.y + len/2 + pul.y;
+                
+                
+                
+                if(_minX < 0 || _maxX > WIDTH_PROCESS || _minY < 0 || _maxY > HEIGHT_PROCESS){
                     
-                    int _minX, _maxX, _minY, _maxY;
+                    ofVec2f p = pos+pul;
+                    ofVec2f d = ofVec2f(abs(direction.y), abs(direction.x));
                     
-                    int last_index = stockPosition.size() - 1;
-                    ofVec2f pos = stockPosition.at(last_index);
+                    int cell;
+                    if(d.x == 1) cell = storageHeight/2;
+                    else if(d.y == 1) cell = storageWidth/2;
+                    
+                    if(p.x < minX){
+                        if(p.y < minY){
+                            p.x = cell;
+                            p.y = cell;
+                        }else if(p.y > maxY){
+                            p.x = cell;
+                            p.y = HEIGHT_PROCESS - cell;
+                        }
+                    }else if(p.x > maxX){
+                        if(p.y < minY){
+                            p.x = WIDTH_PROCESS - cell;
+                            p.y = cell;
+                        }else if(p.y > maxY){
+                            p.x = WIDTH_PROCESS - cell;
+                            p.y = HEIGHT_PROCESS - cell;
+                        }
+                    }
                     
                     
-                    ofVec2f mul = ofVec2f(1-abs(direction.x), 1-abs(direction.y))*ofVec2f(storageWidth, storageHeight);
-                    int len = mul.length();
-                    //cout << "mul : " << mul << endl;
-                    //cout << "mul length : " << len << endl;
+                    stockPosition.push_back(p);
                     
-                    ofVec2f pul = ofVec2f(1-abs(direction.x), 1-abs(direction.y))*i;
+                    p.x < storageWidth ? direction.x = d.x : direction.x = -1*d.x;
+                    p.y < storageHeight ? direction.y = d.y : direction.y = -1*d.y;
                     
-                    //cout << "pul : " << pul << endl;
-                    _minX = pos.x - len/2 + pul.x;
-                    _maxX = pos.x + len/2 + pul.x;
-                    _minY = pos.y - len/2 + pul.y;
-                    _maxY = pos.y + len/2 + pul.y;
+                    i = 0;
                     
-
+                    
+                }else{
                     
                     int blackScale = 0;
                     int counter = 0;
@@ -675,23 +711,110 @@ private:
                             counter++;
                         }
                     }
-                    blackScale /= counter;
+                    blackScale /= MAX(counter,1);
+                    blackScale = 255-blackScale;
                     
-                    i++;
+                    
+                    if(isMoveFilingsToWhiteArea){
+                        if(blackScale < 150){ //this is white area
+                            isBreakWhile = true;
+                            stockPosition.push_back(pos+pul);
+                        }
+                    }else{
+                        if(blackScale > 150){ //this is black area
+                            isBreakWhile = true;
+                            stockPosition.push_back(pos+pul);
+                        }
+                    }
+                    
+                    //if(i < 2) cout << "blackScale : " << blackScale << endl;
                 }
+                
+                
+                if(stockPosition.size() > 5){
+                    isBreakWhile = true;
+                }
+                
+                if(isBreakWhile) {
+                    //reverse(begin(stockPosition), end(stockPosition));
+                    if(isMoveFilingsToWhiteArea) stockPositionIndex = 0;
+                    else stockPositionIndex = stockPosition.size() -1;
+                    
+                    STEP = 4;
+                    break;
+                }
+                i++;
+                
             }
-            
-            isManageStorageMode = false;
-            STEP = 0;
-
-            
-        }else{
-            
         }
         
         
         if(STEP == 4){
+
+            bool isNext = false;
+            if(isMoveFilingsToWhiteArea){
+                
+                if(stockPositionIndex < stockPosition.size()){
+                    float dist;
+                    ofVec2f rand = ofVec2f(ofRandom(-storageWidth/2, storageWidth/2),
+                                           ofRandom(-storageHeight/2, storageHeight/2));
+                    ofVec2f p = stockPosition.at(stockPositionIndex);
+                    if(stockPositionIndex == 0){
+                        plotterUp = true;
+                        osc.plotterUp();
+                        dist = firstPosition.distance(p);
+                        rand = ofVec2f(0,0);
+                    }else{
+                        dist = stockPosition.at(stockPositionIndex-1).distance(p);
+                    }
+                    p = p+rand;
+                    osc.send(p/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
+                    timeManager.start(dist);
+                    moveInStorage = p;
+                    stockPositionIndex++;
+                }else{
+                    moveToSecond = stockPosition.at(stockPosition.size()-1);
+                    isNext = true;
+                }
+
+            }
+            else{
+                if(stockPositionIndex >= 0){
+                    float dist;
+                    ofVec2f rand = ofVec2f(ofRandom(-storageWidth/2, storageWidth/2),
+                                           ofRandom(-storageHeight/2, storageHeight/2));
+
+                    ofVec2f p = stockPosition.at(stockPositionIndex);
+                    if(stockPositionIndex == (stockPosition.size()-1)){
+                        plotterUp = false;
+                        osc.plotterDown();
+                        dist = firstPosition.distance(p);
+                        rand = ofVec2f(0,0);
+                    }else if(stockPositionIndex == (stockPosition.size()-2)){
+                        plotterUp = true;
+                        osc.plotterUp();
+                        dist = stockPosition.at(stockPositionIndex+1).distance(p);
+                    }else{
+                        dist = stockPosition.at(stockPositionIndex+1).distance(p);
+                    }
+                    p = p+rand;
+                    osc.send(p/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
+                    timeManager.start(dist);
+                    moveInStorage = p;
+                    stockPositionIndex--;
+                }else{
+                    moveToSecond = stockPosition.at(0);
+                    isNext = true;
+                }
+            }
             
+            if(isNext){
+                isManageStorageMode = false;
+                STEP = 0;
+                plotterUp = false;
+                osc.plotterDown();
+            }
+            cout << "stockPositionIndex : " << stockPositionIndex << endl;
         }
         
         
@@ -715,7 +838,16 @@ private:
         ofSetLineWidth(3);
         ofDrawRectangle(moveToSecond.x, moveToSecond.y, CELL_SIZE, CELL_SIZE);
         ofDrawRectangle(moveToFirst.x, moveToFirst.y, CELL_SIZE, CELL_SIZE);
-        if(isManageStorageMode) ofDrawRectangle(moveInStorage.x, moveInStorage.y, STORAGE_OF_FILINGS, STORAGE_OF_FILINGS);
+        
+
+        if(isManageStorageMode){
+            ofSetColor(0,150,0);
+            for(int i=0; i<stockPosition.size(); i++){
+                ofDrawCircle(stockPosition[i].x, stockPosition[i].y, STORAGE_OF_FILINGS/2);
+            }
+            ofSetColor(0,50,0);
+            ofDrawCircle(moveInStorage.x, moveInStorage.y, STORAGE_OF_FILINGS/2);
+        }
         
         ofVec2f aroundCells[9] = {
             ofVec2f(0,0), //center
