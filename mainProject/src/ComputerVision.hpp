@@ -554,7 +554,6 @@ private:
                         osc.send(moveToFirst/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
                         float dist = moveToFirst.distance(nowPosition);
                         timeManager.start(dist);
-                        cout << "isManageStorageMode : " << isManageStorageMode << endl;
                         if(isManageStorageMode) STEP = 2;
                         else STEP = 1;
                         
@@ -593,6 +592,7 @@ private:
         const int storageWidth = minX;
         const int storageHeight = minY;
         
+        
         bool isMoveFilingsToWhiteArea = false;
         if( minX <= firstPosition.x && firstPosition.x < maxX && minY <= firstPosition.y && firstPosition.y < maxX){
             isMoveFilingsToWhiteArea = true;
@@ -611,12 +611,13 @@ private:
                 timeManager.start(dist);
                 
                 moveInStorage = secondPosition;
-                
+
                 ofVec2f p = secondPosition;
                 if(secondPosition.x <= minX) p.x  = storageWidth/2;
                 if(secondPosition.x >= maxX) p.x = maxX + storageWidth/2;
                 if(secondPosition.y <= minY) p.y = storageHeight/2;
                 if(secondPosition.y >= maxY) p.y = maxY + storageHeight/2;
+                
                     
                 stockPosition.clear();
                 stockPosition.push_back(p);
@@ -625,7 +626,7 @@ private:
                 
             }
             if(STEP == 3){
-                int i=0;
+                
                 
                 int d = 1;
                 if(int(moveToFirst.x)%2 == 0) d = -1;
@@ -638,27 +639,25 @@ private:
                     direction.x = d;
                     direction.y = 0;
                 }
-
+                cout << direction << endl;
                 
                 ofPixels realPixels;
                 realIronFilingsImage.readToPixels(realPixels);
                 
-                while(i<50){
+                int i=0;
+                while(stockPosition.size() < 6){
                     
                     int _minX, _maxX, _minY, _maxY;
                     
                     int last_index = stockPosition.size() - 1;
                     ofVec2f pos = stockPosition.at(last_index);
                     
-                    
-                    ofVec2f mul = ofVec2f(1-abs(direction.x), 1-abs(direction.y))*ofVec2f(storageWidth, storageHeight);
+                    ofVec2f norm = ofVec2f(1-abs(direction.x), 1-abs(direction.y));
+                    ofVec2f mul = norm*ofVec2f(storageWidth, storageHeight);
                     int len = mul.length();
-                    //cout << "mul : " << mul << endl;
-                    //cout << "mul length : " << len << endl;
+                    ofVec2f pul = direction * i;
                     
-                    ofVec2f pul = ofVec2f(1-abs(direction.x), 1-abs(direction.y))*i;
                     
-                    //cout << "pul : " << pul << endl;
                     _minX = pos.x - len/2 + pul.x;
                     _maxX = pos.x + len/2 + pul.x;
                     _minY = pos.y - len/2 + pul.y;
@@ -666,16 +665,58 @@ private:
                     
 
                     
-                    int blackScale = 0;
-                    int counter = 0;
-                    for(int y=_minY; y<_maxY; y++){
-                        for(int x=_minX; x<_maxX; x++){
-                            ofColor c = realPixels.getColor(x,y);
-                            blackScale += c.r;
-                            counter++;
+                    if(_minX < 0 || _maxX > WIDTH_PROCESS || _minY < 0 || _maxY > HEIGHT_PROCESS){
+                        
+                        
+                        ofVec2f p = pos+pul;
+                        ofVec2f d = ofVec2f(abs(direction.y), abs(direction.x));
+                        
+                        int cell;
+                        if(d.x == 1) cell = storageHeight;
+                        else if(d.y == 1) cell = storageWidth;
+                        
+                        if(p.x < minX){
+                            if(p.y < minY){
+                                p.x = cell/2;
+                                p.y = cell/2;
+                            }else if(p.y > maxX){
+                                p.x = cell/2;
+                                p.y = HEIGHT_PROCESS - cell/2;
+                            }
+                        }else if(p.x > maxX){
+                            if(p.y < minY){
+                                p.x = WIDTH_PROCESS - cell/2;
+                                p.y = cell/2;
+                            }else if(p.y > maxY){
+                                p.x = WIDTH_PROCESS - cell/2;
+                                p.y = HEIGHT_PROCESS - cell/2;
+                            }
                         }
+        
+                        
+                        stockPosition.push_back(p);
+                        
+                        p.x < storageWidth ? direction.x = d.x : direction.x = -1*d.x;
+                        p.y < storageHeight ? direction.y = d.y : direction.y = -1*d.y;
+                        
+                        i = 0;
+
+
+                    }else{
+                        
+                        int blackScale = 0;
+                        int counter = 0;
+                        for(int y=_minY; y<_maxY; y++){
+                            for(int x=_minX; x<_maxX; x++){
+                                ofColor c = realPixels.getColor(x,y);
+                                blackScale += c.r;
+                                counter++;
+                            }
+                        }
+                        blackScale /= MAX(counter,1);
+                        if(i < 2) cout << "blackScale : " << blackScale << endl;
                     }
-                    blackScale /= counter;
+                    
                     
                     i++;
                 }
@@ -715,7 +756,13 @@ private:
         ofSetLineWidth(3);
         ofDrawRectangle(moveToSecond.x, moveToSecond.y, CELL_SIZE, CELL_SIZE);
         ofDrawRectangle(moveToFirst.x, moveToFirst.y, CELL_SIZE, CELL_SIZE);
-        if(isManageStorageMode) ofDrawRectangle(moveInStorage.x, moveInStorage.y, STORAGE_OF_FILINGS, STORAGE_OF_FILINGS);
+        
+        //if(isManageStorageMode){
+        if(true){
+            for(int i=0; i<stockPosition.size(); i++){
+                ofDrawCircle(stockPosition[i].x, stockPosition[i].y, STORAGE_OF_FILINGS/2);
+            }
+        }
         
         ofVec2f aroundCells[9] = {
             ofVec2f(0,0), //center
