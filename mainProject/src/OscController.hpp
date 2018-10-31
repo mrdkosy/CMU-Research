@@ -13,9 +13,9 @@
 #include "ofMain.h"
 #include "ofxOscSender.h"
 
-//#define DEBUG
+#define DEBUG
 
-#define IP "128.237.219.124"
+#define IP "128.237.222.180"
 #define PORT 12345
 
 class OscController

@@ -16,7 +16,7 @@
 
 //#define DEBUG
 //#define REALTIME_CAPTURE_PEOPLE
-//#define REALTIME_CAPTURE_IRONFILINGS
+#define REALTIME_CAPTURE_IRONFILINGS
 #define WIDTH_PROCESS 640
 #define HEIGHT_PROCESS 480
 #define WIDTH_VIEW 640
@@ -69,6 +69,7 @@ private:
     bool isManageStorageMode, isMoveFilingsToWhiteArea;
     int STEP;
     vector<ofVec2f> stockPosition;
+    int stockPositionIndex;
     
     ofImage horizonalSobel, verticalSobel, thresholdImg;
     
@@ -599,28 +600,24 @@ private:
         
         if(STEP == 2){
             
-            /*
-             plotterUp = true;
-             osc.plotterUp();
-             osc.send(secondPosition/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
-             float dist = firstPosition.distance(secondPosition);
-             timeManager.start(dist);
-             */
+            stockPosition.clear();
             
             ofVec2f p;
             if(isMoveFilingsToWhiteArea){
                 p = secondPosition;
             }else{
+                stockPosition.push_back(secondPosition);
                 p = firstPosition;
             }
-
+            
             if(p.x <= minX) p.x  = storageWidth/2;
             else if(p.x >= maxX) p.x = maxX + storageWidth/2;
             if(p.y <= minY) p.y = storageHeight/2;
             else if(p.y >= maxY) p.y = maxY + storageHeight/2;
-            stockPosition.clear();
+            
+            
             stockPosition.push_back(p);
-
+            moveInStorage = p;
             STEP = 3;
             
         }
@@ -630,9 +627,9 @@ private:
             int d = 1;
             if(int(moveToFirst.x)%2 == 0) d = -1; //just random
             
-
+            
             ofVec2f _p = stockPosition.at(stockPosition.size() - 1);
-
+            
             ofVec2f direction;
             if(_p.x < minX || maxX <= _p.x){
                 direction.x = 0;
@@ -646,7 +643,8 @@ private:
             realIronFilingsImage.readToPixels(realPixels);
             
             int i=0;
-            while(stockPosition.size() < 6){
+            while(true){
+                bool isBreakWhile = false;
                 
                 int _minX, _maxX, _minY, _maxY;
                 
@@ -714,22 +712,109 @@ private:
                         }
                     }
                     blackScale /= MAX(counter,1);
-                    blackScale -= 255;
+                    blackScale = 255-blackScale;
                     
-                    if(i < 2) cout << "blackScale : " << blackScale << endl;
+                    
+                    if(isMoveFilingsToWhiteArea){
+                        if(blackScale < 150){ //this is white area
+                            isBreakWhile = true;
+                            stockPosition.push_back(pos+pul);
+                        }
+                    }else{
+                        if(blackScale > 150){ //this is black area
+                            isBreakWhile = true;
+                            stockPosition.push_back(pos+pul);
+                        }
+                    }
+                    
+                    //if(i < 2) cout << "blackScale : " << blackScale << endl;
                 }
                 
                 
+                if(stockPosition.size() > 5){
+                    isBreakWhile = true;
+                }
+                
+                if(isBreakWhile) {
+                    //reverse(begin(stockPosition), end(stockPosition));
+                    if(isMoveFilingsToWhiteArea) stockPositionIndex = 0;
+                    else stockPositionIndex = stockPosition.size() -1;
+                    
+                    STEP = 4;
+                    break;
+                }
                 i++;
+                
             }
         }
         
-        isManageStorageMode = false;
-        STEP = 0;
-
+        
         if(STEP == 4){
+
+            bool isNext = false;
+            if(isMoveFilingsToWhiteArea){
+                
+                if(stockPositionIndex < stockPosition.size()){
+                    float dist;
+                    ofVec2f rand = ofVec2f(ofRandom(-storageWidth/2, storageWidth/2),
+                                           ofRandom(-storageHeight/2, storageHeight/2));
+                    ofVec2f p = stockPosition.at(stockPositionIndex);
+                    if(stockPositionIndex == 0){
+                        plotterUp = true;
+                        osc.plotterUp();
+                        dist = firstPosition.distance(p);
+                        rand = ofVec2f(0,0);
+                    }else{
+                        dist = stockPosition.at(stockPositionIndex-1).distance(p);
+                    }
+                    p = p+rand;
+                    osc.send(p/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
+                    timeManager.start(dist);
+                    moveInStorage = p;
+                    stockPositionIndex++;
+                }else{
+                    moveToSecond = stockPosition.at(stockPosition.size()-1);
+                    isNext = true;
+                }
+
+            }
+            else{
+                if(stockPositionIndex >= 0){
+                    float dist;
+                    ofVec2f rand = ofVec2f(ofRandom(-storageWidth/2, storageWidth/2),
+                                           ofRandom(-storageHeight/2, storageHeight/2));
+
+                    ofVec2f p = stockPosition.at(stockPositionIndex);
+                    if(stockPositionIndex == (stockPosition.size()-1)){
+                        plotterUp = false;
+                        osc.plotterDown();
+                        dist = firstPosition.distance(p);
+                        rand = ofVec2f(0,0);
+                    }else if(stockPositionIndex == (stockPosition.size()-2)){
+                        plotterUp = true;
+                        osc.plotterUp();
+                        dist = stockPosition.at(stockPositionIndex+1).distance(p);
+                    }else{
+                        dist = stockPosition.at(stockPositionIndex+1).distance(p);
+                    }
+                    p = p+rand;
+                    osc.send(p/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
+                    timeManager.start(dist);
+                    moveInStorage = p;
+                    stockPositionIndex--;
+                }else{
+                    moveToSecond = stockPosition.at(0);
+                    isNext = true;
+                }
+            }
             
-            
+            if(isNext){
+                isManageStorageMode = false;
+                STEP = 0;
+                plotterUp = false;
+                osc.plotterDown();
+            }
+            cout << "stockPositionIndex : " << stockPositionIndex << endl;
         }
         
         
@@ -754,11 +839,14 @@ private:
         ofDrawRectangle(moveToSecond.x, moveToSecond.y, CELL_SIZE, CELL_SIZE);
         ofDrawRectangle(moveToFirst.x, moveToFirst.y, CELL_SIZE, CELL_SIZE);
         
-        //if(isManageStorageMode){
-        if(true){
+
+        if(isManageStorageMode){
+            ofSetColor(0,150,0);
             for(int i=0; i<stockPosition.size(); i++){
                 ofDrawCircle(stockPosition[i].x, stockPosition[i].y, STORAGE_OF_FILINGS/2);
             }
+            ofSetColor(0,50,0);
+            ofDrawCircle(moveInStorage.x, moveInStorage.y, STORAGE_OF_FILINGS/2);
         }
         
         ofVec2f aroundCells[9] = {
