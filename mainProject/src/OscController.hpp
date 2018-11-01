@@ -15,7 +15,7 @@
 
 #define DEBUG
 
-#define IP "128.237.222.180"
+#define IP "128.237.116.41"
 #define PORT 12345
 
 class OscController

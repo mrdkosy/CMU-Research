@@ -22,8 +22,8 @@
 #define WIDTH_VIEW 640
 #define HEIGHT_VIEW (((float)HEIGHT_PROCESS/WIDTH_PROCESS)*WIDTH_VIEW)
 #define UNIT_DISRANCE_PER_SECOND (WIDTH_PROCESS/8.5)
-#define CELL 20 //2,4,8,10,16,20,32,40,50
-#define STORAGE_OF_FILINGS 20
+#define CELL 30 //2,4,8,10,16,20,32,40,50
+#define STORAGE_OF_FILINGS 40
 #define RANGE_SEARCH_CELL 200
 #define NUM_CELLS_AROUND_TARGET 5 //5 or 9
 #define HOW_TINY 0 //min:2 max:cell 0:just center
@@ -162,22 +162,27 @@ private:
                 const int maxY = minY + storageOfFilings.getHeight();
                 
                 if(!isManageStorageMode){
-                    int nx = ofRandom(minX, maxX);
-                    int ny = ofRandom(minY, maxY);
                     
-                    int i=0;
-                    while(i<100){
-                        int range = 50;
-                        int _nx = plotterPosition.x + ofRandom(-range, range);
-                        int _ny = plotterPosition.y + ofRandom(-range, range);
-                        if(minX <= _nx && _nx < maxX && minY <= _ny && _ny < maxY){
-                            nx = _nx;
-                            ny = _ny;
-                            break;
-                        }
-                        i++;
+                    int range = 50;
+                    
+                    if(plotterPosition.x < minX || plotterPosition.x > maxX || plotterPosition.y < minY || plotterPosition.y > maxY){
+                        plotterPosition = ofVec2f(ofRandom(minX, maxX), ofRandom(minY, maxY));
                     }
+                    
+                        ofVec2f rand;
+                    if(plotterPosition.x <= minX+range) rand.x = ofRandom(plotterPosition.x-minX, range*2);
+                    else if(plotterPosition.x >= maxX-range) rand.x = ofRandom(-range*2, maxX-plotterPosition.x);
+                    else rand.x = ofRandom(-range, range);
+                    
+                    if(plotterPosition.y <= minY+range) rand.y = ofRandom(plotterPosition.y-minY, range*2);
+                    else if(plotterPosition.y >= maxY-range) rand.y = ofRandom(-range*2, maxY-plotterPosition.y);
+                    else rand.y = ofRandom(-range, range);
+                    
+                    int nx = plotterPosition.x + rand.x;
+                    int ny = plotterPosition.y + rand.y;
+                    
                     callCalculateImageColor(ofVec2f(nx, ny));
+                    
                 }else{ //manage the storage of filings
                     calculateFilingsStorage();
                 }
@@ -865,7 +870,7 @@ private:
                 COUNTER = 0;
                 STEP = 0;
                 moveToSecond = p;
-                plotterPosition = ofVec2f(ofRandom(minX, maxX), ofRandom(minY, maxY)); //!!!!!!!!!!!!
+                //plotterPosition = ofVec2f(ofRandom(minX, maxX), ofRandom(minY, maxY)); //!!!!!!!!!!!!
             }
             COUNTER++;
         }
