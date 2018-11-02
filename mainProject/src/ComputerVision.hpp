@@ -180,7 +180,7 @@ private:
                         plotterPosition = ofVec2f(ofRandom(minX, maxX), ofRandom(minY, maxY));
                     }
                     
-                        ofVec2f rand;
+                    ofVec2f rand;
                     if(plotterPosition.x <= minX+range) rand.x = ofRandom(plotterPosition.x-minX, range*2);
                     else if(plotterPosition.x >= maxX-range) rand.x = ofRandom(-range*2, maxX-plotterPosition.x);
                     else rand.x = ofRandom(-range, range);
@@ -223,9 +223,28 @@ private:
                 plotterPosition = osc.getRangeMax() * ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS);
             }
             if(gui.point_00){
-                osc.moveToMax();
-                plotterPosition = osc.getRangeMax() * ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS);
+                osc.reset();
+                plotterPosition = ofVec2f(0,0);
             }
+            
+            if(gui.point_W0){
+                osc.send(ofVec2f(1,0));
+                plotterPosition = osc.getRangeMax() * ofVec2f(WIDTH_PROCESS, 0);
+            }
+            
+            if(gui.point_0H){
+                osc.send(ofVec2f(0,1));
+                plotterPosition = osc.getRangeMax() * ofVec2f(0, HEIGHT_PROCESS);
+            }
+            if(gui.plotterUp){
+                osc.plotterUp();
+                plotterUp = true;
+            }
+            if(gui.plotterDown){
+                osc.plotterDown();
+                plotterUp = false;
+            }
+            
         }
         if(gui.mouseDebugMode) isColorDebugMode = true;
         else isColorDebugMode = false;
@@ -1049,59 +1068,61 @@ public:
             plotterPosition = p*ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS);
         }
         if(key == 'a') isCalibrationMode = !isCalibrationMode;
+        
         if(key == 'g') gui.setIsDraw();
+        
         /*
-        if(key == 't') isTrimmingMode = !isTrimmingMode;
-        if(isTrimmingMode){
-            if(key == 'c'){
-                trimmedPosition.clear();
-                trimmedArea.setSize(0,0);
-            }
-            ofVec2f p = plotterPosition/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS); //0-1
-            float plus = 0.001;
-            
-            if(key == OF_KEY_UP){
-                p.y = MAX(p.y - plus, 0);
-                osc.send(p);
-            }
-            if(key == OF_KEY_DOWN){
-                p.y = MIN(p.y + plus, 1);
-                osc.send(p);
-            }
-            if(key == OF_KEY_RIGHT){
-                p.x = MIN(p.x + plus, 1);
-                osc.send(p);
-            }
-            if(key == OF_KEY_LEFT){
-                p.x = MAX(p.x - plus, 0);
-                osc.send(p);
-            }
-            plotterPosition = p*ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS);
-            
-            if(key == 'o') osc.setRange(0, p.x, 0, p.y);
-            if(key == 'm'){
-                osc.moveToMax();
-                plotterPosition = osc.getRangeMax() * ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS);
-            }
-            if(key == 'u') osc.plotterUp();
-            if(key == 'd') osc.plotterDown();
-        }
-        if(key == 'r'){
-            osc.reset();
-            plotterPosition = ofVec2f(0,0);
-        }
-        if(key == 'd') isColorDebugMode = !isColorDebugMode;
-        if(key == 'a') isCalibrationMode = !isCalibrationMode;
-        
-        if(key == 's'){
-            ofPixels pixels;
-            pixels = colorIronFilingsImage.getPixels();
-            string name = ofToString(ofGetFrameNum());
-            name += ".png";
-            ofSaveImage(pixels, name);
-        }
-        
-        */
+         if(key == 't') isTrimmingMode = !isTrimmingMode;
+         if(isTrimmingMode){
+         if(key == 'c'){
+         trimmedPosition.clear();
+         trimmedArea.setSize(0,0);
+         }
+         ofVec2f p = plotterPosition/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS); //0-1
+         float plus = 0.001;
+         
+         if(key == OF_KEY_UP){
+         p.y = MAX(p.y - plus, 0);
+         osc.send(p);
+         }
+         if(key == OF_KEY_DOWN){
+         p.y = MIN(p.y + plus, 1);
+         osc.send(p);
+         }
+         if(key == OF_KEY_RIGHT){
+         p.x = MIN(p.x + plus, 1);
+         osc.send(p);
+         }
+         if(key == OF_KEY_LEFT){
+         p.x = MAX(p.x - plus, 0);
+         osc.send(p);
+         }
+         plotterPosition = p*ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS);
+         
+         if(key == 'o') osc.setRange(0, p.x, 0, p.y);
+         if(key == 'm'){
+         osc.moveToMax();
+         plotterPosition = osc.getRangeMax() * ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS);
+         }
+         if(key == 'u') osc.plotterUp();
+         if(key == 'd') osc.plotterDown();
+         }
+         if(key == 'r'){
+         osc.reset();
+         plotterPosition = ofVec2f(0,0);
+         }
+         if(key == 'd') isColorDebugMode = !isColorDebugMode;
+         if(key == 'a') isCalibrationMode = !isCalibrationMode;
+         
+         if(key == 's'){
+         ofPixels pixels;
+         pixels = colorIronFilingsImage.getPixels();
+         string name = ofToString(ofGetFrameNum());
+         name += ".png";
+         ofSaveImage(pixels, name);
+         }
+         
+         */
     }
     //--------------------------------------------------------------
     void mousePressed(int x, int y){

@@ -29,8 +29,8 @@ private:
 public:
     ofxIntField CELL, STORAGE_OF_FILINGS, COUNTER_LIMIT;
     ofxFloatField UNIT_DISRANCE_PER_SECOND;
-    ofxButton point_00, point_W0, point_WH, point_0H, screenShot, clearPosition, setRange;
-    ofxToggle trimmingMode, mouseDebugMode, plotterUp;
+    ofxButton point_00, point_W0, point_WH, point_0H, screenShot, clearPosition, setRange,plotterUp, plotterDown;
+    ofxToggle trimmingMode, mouseDebugMode;
     
     GuiManager(){
         isDraw = true;
@@ -58,7 +58,8 @@ public:
         gui.add(point_W0.setup("Move to (MAX_WIDTH, 0)"));
         gui.add(point_0H.setup("Move to (0, MAX_HEIGHT)"));
         gui.add(point_WH.setup("Move to (MAX_WIDTH, MAX_HEIGHT)"));
-        gui.add(plotterUp.setup("magnet up", false));
+        gui.add(plotterUp.setup("magnet up"));
+        gui.add(plotterDown.setup("magnet down"));
         gui.add(clearPosition.setup("clear positions"));
         gui.add(setRange.setup("set range"));
         
