@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include "OscController.hpp"
+#include "GuiManager.hpp"
 #include "ofxOpenCv.h"
 #include "ofxCv.h"
 
@@ -21,12 +22,13 @@
 #define HEIGHT_PROCESS 480
 #define WIDTH_VIEW 640
 #define HEIGHT_VIEW (((float)HEIGHT_PROCESS/WIDTH_PROCESS)*WIDTH_VIEW)
-#define UNIT_DISRANCE_PER_SECOND (WIDTH_PROCESS/8.5)
-#define CELL 30 //2,4,8,10,16,20,32,40,50
-#define STORAGE_OF_FILINGS 40
+//#define UNIT_DISRANCE_PER_SECOND (WIDTH_PROCESS/8.5)
+//#define CELL 30 //2,4,8,10,16,20,32,40,50
+//#define STORAGE_OF_FILINGS 40
 #define RANGE_SEARCH_CELL 200
 #define NUM_CELLS_AROUND_TARGET 5 //5 or 9
 #define HOW_TINY 0 //min:2 max:cell 0:just center
+
 
 class TimeManager{
     float startTime = 0;
@@ -34,7 +36,7 @@ class TimeManager{
 public:
     void start(float dist){
         startTime = ofGetElapsedTimef();
-        timeLimit = dist/(float)UNIT_DISRANCE_PER_SECOND;
+        timeLimit = dist;
 #ifdef DEBUG
         cout << "set time : left -> " << timeLimit << endl;
 #endif
@@ -73,6 +75,11 @@ private:
     ofVec2f cornerPoints[5] = {ofVec2f(0,0), ofVec2f(WIDTH_PROCESS,0), ofVec2f(WIDTH_PROCESS,HEIGHT_PROCESS), ofVec2f(0,HEIGHT_PROCESS),ofVec2f(0,0)};
     int COUNTER;
     ofImage horizonalSobel, verticalSobel, thresholdImg;
+    
+    int CELL, STORAGE_OF_FILINGS;
+    float UNIT_DISRANCE_PER_SECOND;
+    
+    GuiManager gui;
     
     //--------------------------------------------------------------
     void init(){
@@ -132,12 +139,16 @@ private:
         
         
         //set strage
+        STORAGE_OF_FILINGS = gui.getStorageValue();
         int sh = STORAGE_OF_FILINGS*2;
         int sw = ((WIDTH_PROCESS/(float)HEIGHT_PROCESS)*STORAGE_OF_FILINGS)*2;
         float h = HEIGHT_PROCESS - sh;
         float w = WIDTH_PROCESS - sw;
         storageOfFilings.setPosition(sw/2, sh/2);
         storageOfFilings.setSize(w, h);
+        
+        CELL = gui.CELL;
+        UNIT_DISRANCE_PER_SECOND = (WIDTH_PROCESS/gui.UNIT_DISRANCE_PER_SECOND);
         
         isManageStorageMode = false;
         STEP = 0;
@@ -189,8 +200,59 @@ private:
                 
             }
         }
+        
+        updateGUI();
     }
-    
+    //--------------------------------------------------------------
+    void updateGUI(){
+        
+        if(gui.trimmingMode) isTrimmingMode = true;
+        else isTrimmingMode = false;
+        
+        if(isTrimmingMode){
+            if(gui.clearPosition){
+                trimmedPosition.clear();
+                trimmedArea.setSize(0,0);
+            }
+            ofVec2f p = plotterPosition/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS); //0-1
+            float plus = 0.001;
+            
+            if(gui.setRange) osc.setRange(0, p.x, 0, p.y);
+            if(gui.point_WH){
+                osc.moveToMax();
+                plotterPosition = osc.getRangeMax() * ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS);
+            }
+            if(gui.point_00){
+                osc.moveToMax();
+                plotterPosition = osc.getRangeMax() * ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS);
+            }
+        }
+        if(gui.mouseDebugMode) isColorDebugMode = true;
+        else isColorDebugMode = false;
+        
+        if(gui.screenShot){
+            ofPixels pixels;
+            pixels = colorIronFilingsImage.getPixels();
+            string name = "screenshot/";
+            name += ofToString(ofGetFrameNum());
+            name += ".png";
+            ofSaveImage(pixels, name);
+        }
+        
+        CELL = gui.CELL;
+        UNIT_DISRANCE_PER_SECOND = (WIDTH_PROCESS/gui.UNIT_DISRANCE_PER_SECOND);
+        
+        if(gui.getIsStorageChanged()){
+            STORAGE_OF_FILINGS = gui.getStorageValue();
+            int sh = STORAGE_OF_FILINGS*2;
+            int sw = ((WIDTH_PROCESS/(float)HEIGHT_PROCESS)*STORAGE_OF_FILINGS)*2;
+            float h = HEIGHT_PROCESS - sh;
+            float w = WIDTH_PROCESS - sw;
+            storageOfFilings.setPosition(sw/2, sh/2);
+            storageOfFilings.setSize(w, h);
+        }
+        
+    }
     //--------------------------------------------------------------
     void drawPeople(){
         
@@ -575,7 +637,7 @@ private:
                         osc.plotterDown();
                         osc.send(moveToFirst/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
                         float dist = moveToFirst.distance(nowPosition);
-                        timeManager.start(dist);
+                        timeManager.start(dist/UNIT_DISRANCE_PER_SECOND);
                         if(!isManageStorageMode) STEP = 1;
                         
                     }
@@ -594,11 +656,11 @@ private:
             
             
             float dist = moveToSecond.distance(moveToFirst);
-            timeManager.start(dist);
+            timeManager.start(dist/UNIT_DISRANCE_PER_SECOND);
             
             
             COUNTER++;
-            if(COUNTER > 40){
+            if(COUNTER > gui.COUNTER_LIMIT){
                 isManageStorageMode = true;
                 STEP = 5;
                 COUNTER = 0;
@@ -793,7 +855,7 @@ private:
                     }
                     p = p+rand;
                     osc.send(p/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
-                    timeManager.start(dist);
+                    timeManager.start(dist/UNIT_DISRANCE_PER_SECOND);
                     moveInStorage = p;
                     stockPositionIndex++;
                 }else{
@@ -823,7 +885,7 @@ private:
                     }
                     p = p+rand;
                     osc.send(p/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
-                    timeManager.start(dist);
+                    timeManager.start(dist/UNIT_DISRANCE_PER_SECOND);
                     moveInStorage = p;
                     stockPositionIndex--;
                 }else{
@@ -862,7 +924,7 @@ private:
             ofVec2f rand = ofVec2f(ofRandom(storageWidth), ofRandom(storageHeight)) * ofVec2f(dx, dy);
             p = p + rand;
             osc.send(p/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
-            timeManager.start(dist);
+            timeManager.start(dist/UNIT_DISRANCE_PER_SECOND);
             plotterPosition = p;
             
             if(COUNTER == 4){
@@ -958,11 +1020,37 @@ public:
         
         drawPeople();
         drawIronFilings();
+        gui.draw();
     }
     
     //--------------------------------------------------------------
     void keyPressed(int key){
         
+        if(isTrimmingMode){
+            ofVec2f p = plotterPosition/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS); //0-1
+            float plus = 0.001;
+            
+            if(key == OF_KEY_UP){
+                p.y = MAX(p.y - plus, 0);
+                osc.send(p);
+            }
+            if(key == OF_KEY_DOWN){
+                p.y = MIN(p.y + plus, 1);
+                osc.send(p);
+            }
+            if(key == OF_KEY_RIGHT){
+                p.x = MIN(p.x + plus, 1);
+                osc.send(p);
+            }
+            if(key == OF_KEY_LEFT){
+                p.x = MAX(p.x - plus, 0);
+                osc.send(p);
+            }
+            plotterPosition = p*ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS);
+        }
+        if(key == 'a') isCalibrationMode = !isCalibrationMode;
+        if(key == 'g') gui.setIsDraw();
+        /*
         if(key == 't') isTrimmingMode = !isTrimmingMode;
         if(isTrimmingMode){
             if(key == 'c'){
@@ -1013,7 +1101,7 @@ public:
             ofSaveImage(pixels, name);
         }
         
-        
+        */
     }
     //--------------------------------------------------------------
     void mousePressed(int x, int y){
