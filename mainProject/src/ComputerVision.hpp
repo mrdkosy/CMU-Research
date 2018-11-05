@@ -17,7 +17,7 @@
 
 //#define DEBUG
 //#define REALTIME_CAPTURE_PEOPLE
-#define REALTIME_CAPTURE_IRONFILINGS
+//#define REALTIME_CAPTURE_IRONFILINGS
 #define WIDTH_PROCESS 640
 #define HEIGHT_PROCESS 480
 #define WIDTH_VIEW 640
@@ -74,7 +74,7 @@ private:
     int stockPositionIndex;
     ofVec2f cornerPoints[5] = {ofVec2f(0,0), ofVec2f(WIDTH_PROCESS,0), ofVec2f(WIDTH_PROCESS,HEIGHT_PROCESS), ofVec2f(0,HEIGHT_PROCESS),ofVec2f(0,0)};
     int COUNTER;
-    ofImage horizonalSobel, verticalSobel, thresholdImg;
+    ofImage horizonalSobel, verticalSobel, thresholdImg, testImg;
     
     int CELL, STORAGE_OF_FILINGS;
     float UNIT_DISRANCE_PER_SECOND;
@@ -95,6 +95,7 @@ private:
         horizonalSobel.allocate(WIDTH_PROCESS, HEIGHT_PROCESS, OF_IMAGE_COLOR);
         verticalSobel.allocate(WIDTH_PROCESS, HEIGHT_PROCESS, OF_IMAGE_COLOR);
         thresholdImg.allocate(WIDTH_PROCESS, HEIGHT_PROCESS, OF_IMAGE_COLOR);
+        testImg.allocate(WIDTH_PROCESS, HEIGHT_PROCESS, OF_IMAGE_COLOR);
         
 #ifdef REALTIME_CAPTURE_PEOPLE
         peopleCamera.setVerbose(true);
@@ -114,7 +115,7 @@ private:
         ironFilingsCamera.setDeviceID(1);
         ironFilingsCamera.initGrabber(WIDTH_PROCESS, HEIGHT_PROCESS);
 #else
-        ironfilingsTestImage.load("1087.png");
+        ironfilingsTestImage.load("screenshot/1087.png");
         ironfilingsTestImage.resize(WIDTH_PROCESS, HEIGHT_PROCESS);
         ironfilingsTestImage.setImageType(OF_IMAGE_COLOR);
         colorIronFilingsImage = ironfilingsTestImage;
@@ -174,19 +175,19 @@ private:
                 
                 if(!isManageStorageMode){
                     
-                    int range = 50;
+                    int range = gui.howRandomPoint;
                     
                     if(plotterPosition.x < minX || plotterPosition.x > maxX || plotterPosition.y < minY || plotterPosition.y > maxY){
                         plotterPosition = ofVec2f(ofRandom(minX, maxX), ofRandom(minY, maxY));
                     }
                     
                     ofVec2f rand;
-                    if(plotterPosition.x <= minX+range) rand.x = ofRandom(plotterPosition.x-minX, range*2);
-                    else if(plotterPosition.x >= maxX-range) rand.x = ofRandom(-range*2, maxX-plotterPosition.x);
+                    if(plotterPosition.x <= minX+range) rand.x = ofRandom(plotterPosition.x-minX, range+range-plotterPosition.x+minX);
+                    else if(plotterPosition.x >= maxX-range) rand.x = ofRandom(-range-maxX+plotterPosition.x, maxX-plotterPosition.x);
                     else rand.x = ofRandom(-range, range);
                     
-                    if(plotterPosition.y <= minY+range) rand.y = ofRandom(plotterPosition.y-minY, range*2);
-                    else if(plotterPosition.y >= maxY-range) rand.y = ofRandom(-range*2, maxY-plotterPosition.y);
+                    if(plotterPosition.y <= minY+range) rand.y = ofRandom(plotterPosition.y-minY, range+range-plotterPosition.y+minY);
+                    else if(plotterPosition.y >= maxY-range) rand.y = ofRandom(-range-maxY+plotterPosition.y, maxY-plotterPosition.y);
                     else rand.y = ofRandom(-range, range);
                     
                     int nx = plotterPosition.x + rand.x;
@@ -368,9 +369,12 @@ private:
         realIronFilingsImage.begin();
         if(trimmedArea.isEmpty() || isTrimmingMode) grayIronFilingsImage = colorIronFilingsImage;
         else grayIronFilingsImage = trimmedIronFilingsImage;
+        grayIronFilingsImage.convertToRange(gui.convertMin, gui.convertMax);
         grayIronFilingsImage.contrastStretch(); //increase the contrast
         grayIronFilingsImage.draw(0,0);
         realIronFilingsImage.end();
+        
+        
         
         ofPushMatrix();
         ofTranslate(WIDTH_VIEW, HEIGHT_VIEW);
@@ -383,6 +387,7 @@ private:
         ofPopMatrix();
         
         
+
     }
     //--------------------------------------------------------------
     void searchColorByMouse(){
@@ -951,7 +956,7 @@ private:
                 COUNTER = 0;
                 STEP = 0;
                 moveToSecond = p;
-                //plotterPosition = ofVec2f(ofRandom(minX, maxX), ofRandom(minY, maxY)); //!!!!!!!!!!!!
+                plotterPosition = ofVec2f(ofRandom(minX, maxX), ofRandom(minY, maxY)); //!!!!!!!!!!!!
             }
             COUNTER++;
         }
