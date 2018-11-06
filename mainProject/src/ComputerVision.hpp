@@ -17,7 +17,7 @@
 
 //#define DEBUG
 //#define REALTIME_CAPTURE_PEOPLE
-//#define REALTIME_CAPTURE_IRONFILINGS
+#define REALTIME_CAPTURE_IRONFILINGS
 #define WIDTH_PROCESS 640
 #define HEIGHT_PROCESS 480
 #define WIDTH_VIEW 640
@@ -75,6 +75,9 @@ private:
     ofVec2f cornerPoints[5] = {ofVec2f(0,0), ofVec2f(WIDTH_PROCESS,0), ofVec2f(WIDTH_PROCESS,HEIGHT_PROCESS), ofVec2f(0,HEIGHT_PROCESS),ofVec2f(0,0)};
     int COUNTER;
     ofImage horizonalSobel, verticalSobel, thresholdImg, testImg;
+    ofVec3f whiteOrBlackInStorage; //if w-value is 1, the point is the edge of black area
+    bool isSearchCellColor;
+    ofVec3f searchedCellColor;
     
     int CELL, STORAGE_OF_FILINGS;
     float UNIT_DISRANCE_PER_SECOND;
@@ -102,7 +105,7 @@ private:
         peopleCamera.setDeviceID(0);
         peopleCamera.initGrabber(WIDTH_PROCESS, HEIGHT_PROCESS);
 #else
-        peopleTestImage.load("mountain.png");
+        peopleTestImage.load("mountain2.jpg");
         peopleTestImage.resize(WIDTH_PROCESS, HEIGHT_PROCESS);
         peopleTestImage.setImageType(OF_IMAGE_COLOR);
         colorPeopleImage = peopleTestImage;
@@ -115,7 +118,7 @@ private:
         ironFilingsCamera.setDeviceID(1);
         ironFilingsCamera.initGrabber(WIDTH_PROCESS, HEIGHT_PROCESS);
 #else
-        ironfilingsTestImage.load("screenshot/1087.png");
+        ironfilingsTestImage.load("screenshot/2736.png");
         ironfilingsTestImage.resize(WIDTH_PROCESS, HEIGHT_PROCESS);
         ironfilingsTestImage.setImageType(OF_IMAGE_COLOR);
         colorIronFilingsImage = ironfilingsTestImage;
@@ -155,6 +158,8 @@ private:
         STEP = 0;
         COUNTER = 0;
         
+        isSearchCellColor = false;
+        
     }
     //--------------------------------------------------------------
     void update(){
@@ -166,7 +171,7 @@ private:
         ironFilingsCamera.update();
 #endif
         
-        if( (!isTrimmingMode)&&(!isColorDebugMode) && (!isCalibrationMode)){
+        if( (!isTrimmingMode)&&(!isColorDebugMode) && (!isCalibrationMode) && (!isSearchCellColor)){
             if(timeManager.getLeftTime() == 0){
                 const int minX = storageOfFilings.getX();
                 const int maxX = minX + storageOfFilings.getWidth();
@@ -247,8 +252,9 @@ private:
             }
             
         }
-        if(gui.mouseDebugMode) isColorDebugMode = true;
-        else isColorDebugMode = false;
+        
+        isColorDebugMode = gui.mouseDebugMode;
+        isSearchCellColor = gui.searchColorMode;
         
         if(gui.screenShot){
             ofPixels pixels;
@@ -294,7 +300,7 @@ private:
         ofClear(255, 255);
         grayPeopleImage = colorPeopleImage;
         grayPeopleImage.contrastStretch();
-        grayPeopleImage.threshold(230);
+        grayPeopleImage.threshold(gui.monoThreshold);
         int x = storageOfFilings.getX();
         int y = storageOfFilings.getY();
         int w = storageOfFilings.getWidth();
@@ -382,12 +388,12 @@ private:
         //drawGrid();
         drawPlotterInformation();
         if(isColorDebugMode || isCalibrationMode) searchColorByMouse();
+        if(isSearchCellColor) searchCellColor();
         drawStorage();
         drawText("cv image of iron filings");
         ofPopMatrix();
         
         
-
     }
     //--------------------------------------------------------------
     void searchColorByMouse(){
@@ -401,6 +407,27 @@ private:
             ofDrawBitmapString("you can search the cell color by your mouse", 180, HEIGHT_VIEW/2);
         if(isCalibrationMode)
             ofDrawBitmapString("calibraion mode", 180, HEIGHT_VIEW/2);
+        ofPopStyle();
+    }
+    //--------------------------------------------------------------
+    void searchCellColor(){
+        ofPushStyle();
+        
+        ofSetRectMode(OF_RECTMODE_CORNER);
+        ofFill();
+        ofSetColor(0, 100);
+        ofDrawRectangle(0,0,WIDTH_VIEW, HEIGHT_VIEW);
+        
+        ofSetRectMode(OF_RECTMODE_CENTER);
+        ofNoFill();
+        ofSetColor(0, 255, 0);
+        ofDrawRectangle(searchedCellColor.x,searchedCellColor.y,CELL, CELL);
+        
+        ofSetRectMode(OF_RECTMODE_CORNER);
+        ofDrawBitmapStringHighlight(ofToString((int)searchedCellColor.z),
+                                    searchedCellColor.x, searchedCellColor.y, ofColor(0,100), ofColor(255));
+        
+        
         ofPopStyle();
     }
     //--------------------------------------------------------------
@@ -508,8 +535,8 @@ private:
                                     isExpand[i] = false;
                                     if(firstWallIndex < 0) firstWallIndex = i;
                                 }
-                                goalGrayScalePerCell[i] += (255 - MIN(goalPixels.getColor(px, py).r, 230) );
-                                realGrayScalePerCell[i] += (255 - MIN(realPixels.getColor(px, py).r, 230) );
+                                goalGrayScalePerCell[i] += (255 - goalPixels.getColor(px, py).r);//(255 - MIN(goalPixels.getColor(px, py).r, 230) );
+                                realGrayScalePerCell[i] += (255 - realPixels.getColor(px, py).r);//(255 - MIN(realPixels.getColor(px, py).r, 230) );
                                 counter++;
                                 
                             }
@@ -686,7 +713,8 @@ private:
             COUNTER++;
             if(COUNTER > gui.COUNTER_LIMIT){
                 isManageStorageMode = true;
-                STEP = 5;
+                //STEP = 5; //!!!!!!!!!!!!!!!
+                STEP = 10;
                 COUNTER = 0;
             }else{
                 STEP = 0;
@@ -956,14 +984,43 @@ private:
                 COUNTER = 0;
                 STEP = 0;
                 moveToSecond = p;
-                plotterPosition = ofVec2f(ofRandom(minX, maxX), ofRandom(minY, maxY)); //!!!!!!!!!!!!
+                plotterPosition = ofVec2f(ofRandom(minX, maxX), ofRandom(minY, maxY));
             }
             COUNTER++;
         }
         
+        if(STEP == 10){
+            ofPixels pixels;
+            realIronFilingsImage.readToPixels(pixels);
+            const int cell = CELL;
+            int xBegin[4] = {0, maxX, WIDTH_PROCESS-cell, 0};
+            int xEnd[4] = {cell, storageWidth, cell, storageWidth};
+            int yBegin[4] = {0, 0, maxY, HEIGHT_PROCESS-cell};
+            int yEnd[4] = {storageHeight, cell, storageHeight, cell};
+            
+            stockPosition.clear();
+            bool isBlack = false;
+            
+            for(int i=0; i<(WIDTH_PROCESS/cell); i++){
+                int counter = 0;
+                int color = 0;
+                for(int y=0; y<minY; y++){
+                    for(int x=0; x<cell; x++){
+                        int _x = cell*i + x;
+                        int _y = y;
+                        ofColor c = pixels.getColor(_x, _y);
+                        color += c.r;
+                        counter++;
+                    }
+                }
+                color /= counter;
+                
+            }
+            
+        }
+        
         
     }
-    
     //--------------------------------------------------------------
     void drawStorage(){
         ofPushStyle();
@@ -976,10 +1033,9 @@ private:
     void drawPlotterInformation(){
         ofPushStyle();
         ofSetColor(150, 0, 0);
-        //plotterUp == true ? ofFill() : ofNoFill();
+        plotterUp == true ? ofSetLineWidth(3) : ofSetLineWidth(1);
         ofNoFill();
         ofSetRectMode(OF_RECTMODE_CENTER);
-        ofSetLineWidth(3);
         ofDrawRectangle(moveToSecond.x, moveToSecond.y, CELL_SIZE, CELL_SIZE);
         ofDrawRectangle(moveToFirst.x, moveToFirst.y, CELL_SIZE, CELL_SIZE);
         
@@ -1016,7 +1072,7 @@ private:
     }
     //--------------------------------------------------------------
     void drawText(string st){
-        ofDrawBitmapStringHighlight(st,ofVec2f(10,20), ofColor(170, 0, 0), ofColor(255));
+        ofDrawBitmapStringHighlight( st,ofVec2f(10,20), ofColor(170, 0, 0), ofColor(255) );
     }
     //--------------------------------------------------------------
     void drawGrid(){
@@ -1174,6 +1230,27 @@ public:
                 
             }
         }
+        
+        if(isSearchCellColor){
+            ofPixels pixels;
+            realIronFilingsImage.readToPixels(pixels);
+            int mx = x - WIDTH_VIEW;
+            int my = y - HEIGHT_VIEW;
+            int color=0, counter=0;
+            for(int y=-CELL/2; y<CELL/2; y++){
+                for(int x=-CELL/2; x<CELL/2; x++){
+                    int _x = mx + x;
+                    int _y = my + y;
+                    if(0<=_x && _x<WIDTH_PROCESS && 0<=_y && _y<HEIGHT_PROCESS){
+                        color += pixels.getColor(_x, _y).r;
+                        counter++;
+                    }
+                }
+            }
+            color /= counter;
+            searchedCellColor = ofVec3f(mx, my, 255-color);
+        }
+        
     }
     
 };

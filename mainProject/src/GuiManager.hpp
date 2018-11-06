@@ -27,10 +27,10 @@ private:
 
 
 public:
-    ofxIntField CELL, STORAGE_OF_FILINGS, COUNTER_LIMIT, howRandomPoint;
+    ofxIntField CELL, STORAGE_OF_FILINGS, COUNTER_LIMIT, howRandomPoint, monoThreshold;
     ofxFloatField UNIT_DISRANCE_PER_SECOND, test;
     ofxButton point_00, point_W0, point_WH, point_0H, screenShot, clearPosition, setRange,plotterUp, plotterDown;
-    ofxToggle trimmingMode, mouseDebugMode;
+    ofxToggle trimmingMode, mouseDebugMode, searchColorMode;
     ofxIntField convertMin, convertMax;
     
     GuiManager(){
@@ -53,6 +53,7 @@ public:
         gui.add(UNIT_DISRANCE_PER_SECOND.setup("UNIT_DISRANCE_PER_SECOND", 8.5, 1, 20));
         gui.add(COUNTER_LIMIT.setup("COUNTER_LIMIT", 80, 1, 500));
         gui.add(howRandomPoint.setup("how random points", 80, 10, 300));
+        gui.add(monoThreshold.setup("mono threshold", 125, 0, 255));
         
         label1.setBackgroundColor(labelColor);
         gui.add(label1.setup("", "plotter calibration"));
@@ -69,6 +70,7 @@ public:
         gui.add(label2.setup("", "mode change"));
         gui.add(trimmingMode.setup("trimming mode", true));
         gui.add(mouseDebugMode.setup("mouse debug mode", false));
+        gui.add(searchColorMode.setup("search color mode", false));
         
         label3.setBackgroundColor(labelColor);
         gui.add(label3.setup("", ""));
