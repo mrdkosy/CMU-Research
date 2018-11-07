@@ -27,9 +27,9 @@ private:
 
 
 public:
-    ofxIntField CELL, STORAGE_OF_FILINGS, COUNTER_LIMIT, howRandomPoint, monoThreshold;
+    ofxIntField CELL, STORAGE_OF_FILINGS, COUNTER_LIMIT, howRandomPoint, monoThreshold, BlackOrWhiteThreshold;
     ofxFloatField UNIT_DISRANCE_PER_SECOND, test;
-    ofxButton point_00, point_W0, point_WH, point_0H, screenShot, clearPosition, setRange,plotterUp, plotterDown;
+    ofxButton point_00, point_W0, point_WH, point_0H, oscReset, screenShot, clearPosition, setRange,plotterUp, plotterDown;
     ofxToggle trimmingMode, mouseDebugMode, searchColorMode;
     ofxIntField convertMin, convertMax;
     
@@ -53,10 +53,12 @@ public:
         gui.add(UNIT_DISRANCE_PER_SECOND.setup("UNIT_DISRANCE_PER_SECOND", 8.5, 1, 20));
         gui.add(COUNTER_LIMIT.setup("COUNTER_LIMIT", 80, 1, 500));
         gui.add(howRandomPoint.setup("how random points", 80, 10, 300));
-        gui.add(monoThreshold.setup("mono threshold", 125, 0, 255));
+        gui.add(monoThreshold.setup("cv mono threshold", 125, 0, 255));
+        gui.add(BlackOrWhiteThreshold.setup("black or white threshold", 100, 0, 255));
         
         label1.setBackgroundColor(labelColor);
         gui.add(label1.setup("", "plotter calibration"));
+        gui.add(oscReset.setup("reset plotter"));
         gui.add(point_00.setup("Move to (0, 0)"));
         gui.add(point_W0.setup("Move to (MAX_WIDTH, 0)"));
         gui.add(point_0H.setup("Move to (0, MAX_HEIGHT)"));
@@ -76,8 +78,8 @@ public:
         gui.add(label3.setup("", ""));
         gui.add(screenShot.setup("screen shot"));
         gui.add(test.setup("test float parameter", 1, 0, 1));
-        gui.add(convertMin.setup("color convert min", 0, 0, 255));
-        gui.add(convertMax.setup("color convert max", 5, 0, 255));
+        gui.add(convertMin.setup("color convert min", 20, 0, 255));
+        gui.add(convertMax.setup("color convert max", 235, 0, 255));
         
     }
     void setIsDraw(){

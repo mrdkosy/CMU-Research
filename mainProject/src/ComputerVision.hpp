@@ -71,6 +71,7 @@ private:
     bool isManageStorageMode, isMoveFilingsToWhiteArea;
     int STEP;
     vector<ofVec2f> stockPosition;
+    vector<ofVec3f> stockPositionColor;
     int stockPositionIndex;
     ofVec2f cornerPoints[5] = {ofVec2f(0,0), ofVec2f(WIDTH_PROCESS,0), ofVec2f(WIDTH_PROCESS,HEIGHT_PROCESS), ofVec2f(0,HEIGHT_PROCESS),ofVec2f(0,0)};
     int COUNTER;
@@ -224,12 +225,18 @@ private:
             float plus = 0.001;
             
             if(gui.setRange) osc.setRange(0, p.x, 0, p.y);
+            
+            if(gui.oscReset){
+                osc.reset();
+                plotterPosition = ofVec2f(0,0);
+                plotterUp = false;
+            }
             if(gui.point_WH){
                 osc.moveToMax();
                 plotterPosition = osc.getRangeMax() * ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS);
             }
             if(gui.point_00){
-                osc.reset();
+                osc.send(ofVec2f(0,0));
                 plotterPosition = ofVec2f(0,0);
             }
             
@@ -349,7 +356,6 @@ private:
         
         
     }
-    
     //--------------------------------------------------------------
     void drawIronFilings(){
         
@@ -375,8 +381,21 @@ private:
         realIronFilingsImage.begin();
         if(trimmedArea.isEmpty() || isTrimmingMode) grayIronFilingsImage = colorIronFilingsImage;
         else grayIronFilingsImage = trimmedIronFilingsImage;
-        grayIronFilingsImage.convertToRange(gui.convertMin, gui.convertMax);
+        
+        //grayIronFilingsImage.convertToRange(gui.convertMin, gui.convertMax);
         grayIronFilingsImage.contrastStretch(); //increase the contrast
+        ofPixels pixels;
+        pixels = grayIronFilingsImage.getPixels();
+        for(int y=0; y<HEIGHT_PROCESS; y++){
+            for(int x=0; x<WIDTH_PROCESS; x++){
+                ofColor c = pixels.getColor(x,y);
+                if(c.r > gui.convertMax) c = ofColor::white;
+                if(c.r < gui.convertMin) c = ofColor::black;
+                pixels.setColor(x,y,c);
+            }
+        }
+        grayIronFilingsImage.setFromPixels(pixels);
+        grayIronFilingsImage.contrastStretch();
         grayIronFilingsImage.draw(0,0);
         realIronFilingsImage.end();
         
@@ -473,6 +492,7 @@ private:
     void callCalculateImageColor(ofVec2f np){
         
         calculateImageColor(goalImage.getTexture(), realIronFilingsImage.getTexture(), np);
+        
     }
     //--------------------------------------------------------------
     void calculateImageColor(ofTexture& goal, ofTexture& real, ofVec2f np){
@@ -993,14 +1013,11 @@ private:
             ofPixels pixels;
             realIronFilingsImage.readToPixels(pixels);
             const int cell = CELL;
-            int xBegin[4] = {0, maxX, WIDTH_PROCESS-cell, 0};
-            int xEnd[4] = {cell, storageWidth, cell, storageWidth};
-            int yBegin[4] = {0, 0, maxY, HEIGHT_PROCESS-cell};
-            int yEnd[4] = {storageHeight, cell, storageHeight, cell};
             
-            stockPosition.clear();
+            stockPositionColor.clear();
             bool isBlack = false;
             
+            //up
             for(int i=0; i<(WIDTH_PROCESS/cell); i++){
                 int counter = 0;
                 int color = 0;
@@ -1014,8 +1031,112 @@ private:
                     }
                 }
                 color /= counter;
+                color = 255 - color;
+
+                
+                bool judgeBlack;
+                if(color > gui.BlackOrWhiteThreshold) judgeBlack = true;
+                else judgeBlack = false;
+                
+                if(i == 0) isBlack = judgeBlack;
+                else{
+                    if(isBlack != judgeBlack){
+                        isBlack = judgeBlack;
+                        ofVec3f p = ofVec3f(cell*i+cell/2, storageHeight/2, (int)judgeBlack);
+                        stockPositionColor.push_back(p);
+                    }
+                }
                 
             }
+            
+            //right
+            for(int i=0; i<(HEIGHT_PROCESS/cell); i++){
+                int counter = 0;
+                int color = 0;
+                for(int y=0; y<cell; y++){
+                    for(int x=maxX; x<WIDTH_PROCESS; x++){
+                        int _x = x;
+                        int _y = cell*i + y;
+                        ofColor c = pixels.getColor(_x, _y);
+                        color += c.r;
+                        counter++;
+                    }
+                }
+                color /= counter;
+                color = 255 - color;
+                
+                bool judgeBlack;
+                if(color > gui.BlackOrWhiteThreshold) judgeBlack = true;
+                else judgeBlack = false;
+                
+                if(isBlack != judgeBlack){
+                    isBlack = judgeBlack;
+                    ofVec3f p = ofVec3f(maxX+storageWidth/2, cell*i+cell/2, (int)judgeBlack);
+                    stockPositionColor.push_back(p);
+                }
+            }
+            
+            //down
+            for(int i=0; i<(WIDTH_PROCESS/cell); i++){
+                int counter = 0;
+                int color = 0;
+                int j = (WIDTH_PROCESS/cell) - i - 1;
+                for(int y=maxY; y<HEIGHT_PROCESS; y++){
+                    for(int x=0; x<cell; x++){
+                        int _x = cell*j + x;
+                        int _y = y;
+                        ofColor c = pixels.getColor(_x, _y);
+                        color += c.r;
+                        counter++;
+                    }
+                }
+                color /= counter;
+                color = 255 - color;
+                
+                bool judgeBlack;
+                if(color > gui.BlackOrWhiteThreshold) judgeBlack = true;
+                else judgeBlack = false;
+                
+                if(isBlack != judgeBlack){
+                    isBlack = judgeBlack;
+                    ofVec3f p = ofVec3f(cell*j+cell/2, maxY+storageHeight/2, (int)judgeBlack);
+                    stockPositionColor.push_back(p);
+                }
+            }
+            
+            //left
+            for(int i=0; i<(HEIGHT_PROCESS/cell); i++){
+                int counter = 0;
+                int color = 0;
+                int j = (HEIGHT_PROCESS/cell) - i - 1;
+                for(int y=0; y<cell; y++){
+                    for(int x=0; x<minX; x++){
+                        int _x = x;
+                        int _y = cell*j + y;
+                        ofColor c = pixels.getColor(_x, _y);
+                        color += c.r;
+                        counter++;
+                    }
+                }
+                color /= counter;
+                color = 255 - color;
+                
+                bool judgeBlack;
+                if(color > gui.BlackOrWhiteThreshold) judgeBlack = true;
+                else judgeBlack = false;
+                
+                
+                if(isBlack != judgeBlack){
+                    isBlack = judgeBlack;
+                    ofVec3f p = ofVec3f(storageWidth/2, cell*j+cell/2, (int)judgeBlack);
+                    stockPositionColor.push_back(p);
+                }
+            }
+            
+            STEP = 11;
+            
+        }
+        if(STEP == 11){
             
         }
         
@@ -1041,9 +1162,17 @@ private:
         
         
         if(isManageStorageMode){
-            ofSetColor(0,150,0);
-            for(int i=0; i<stockPosition.size(); i++){
-                ofDrawCircle(stockPosition[i].x, stockPosition[i].y, STORAGE_OF_FILINGS/2);
+            
+//            for(int i=0; i<stockPosition.size(); i++){
+//                ofDrawCircle(stockPosition[i].x, stockPosition[i].y, STORAGE_OF_FILINGS/2);
+//            }
+            for(int i=0; i<stockPositionColor.size(); i++){
+                
+                if( stockPositionColor[i].z == 1 ) ofSetColor(0,100,0);
+                else if(stockPositionColor[i].z == 2) ofSetColor(180,180,180);
+                else ofSetColor(0,200,0);
+                
+                ofDrawCircle(stockPositionColor[i].x, stockPositionColor[i].y, STORAGE_OF_FILINGS/2);
             }
             ofSetColor(0,50,0);
             ofDrawCircle(moveInStorage.x, moveInStorage.y, STORAGE_OF_FILINGS/2);
@@ -1247,7 +1376,7 @@ public:
                     }
                 }
             }
-            color /= counter;
+            color /= MAX(counter,1);
             searchedCellColor = ofVec3f(mx, my, 255-color);
         }
         

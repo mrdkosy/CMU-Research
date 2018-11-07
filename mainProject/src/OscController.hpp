@@ -13,9 +13,9 @@
 #include "ofMain.h"
 #include "ofxOscSender.h"
 
-#define DEBUG
+//#define DEBUG
 
-#define IP "128.237.167.82" 
+#define IP "128.237.160.139"
 #define PORT 12345
 
 class OscController
@@ -78,7 +78,7 @@ public:
     }
     
     void moveToMax(){
-        plotterDown();
+        //plotterDown();
         send(max);
     }
     
