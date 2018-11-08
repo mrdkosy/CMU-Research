@@ -106,7 +106,7 @@ private:
         peopleCamera.setDeviceID(0);
         peopleCamera.initGrabber(WIDTH_PROCESS, HEIGHT_PROCESS);
 #else
-        peopleTestImage.load("mountain2.jpg");
+        peopleTestImage.load("IMG_0353.jpg");
         peopleTestImage.resize(WIDTH_PROCESS, HEIGHT_PROCESS);
         peopleTestImage.setImageType(OF_IMAGE_COLOR);
         colorPeopleImage = peopleTestImage;
@@ -404,7 +404,7 @@ private:
         ofPushMatrix();
         ofTranslate(WIDTH_VIEW, HEIGHT_VIEW);
         realIronFilingsImage.draw(0, 0, WIDTH_VIEW, HEIGHT_VIEW);
-        //drawGrid();
+        if(gui.viewGrid) drawGrid();
         drawPlotterInformation();
         if(isColorDebugMode || isCalibrationMode) searchColorByMouse();
         if(isSearchCellColor) searchCellColor();
@@ -728,7 +728,7 @@ private:
             
             float dist = moveToSecond.distance(moveToFirst);
             timeManager.start(dist/UNIT_DISRANCE_PER_SECOND);
-            
+            plotterPosition = moveToSecond;
             
             COUNTER++;
             if(COUNTER > gui.COUNTER_LIMIT){
@@ -1015,7 +1015,10 @@ private:
             const int cell = CELL;
             
             stockPositionColor.clear();
+            stockPositionIndex = 0;
+            vector<ofVec3f> colorChangePoint;
             bool isBlack = false;
+            
             
             //up
             for(int i=0; i<(WIDTH_PROCESS/cell); i++){
@@ -1038,12 +1041,16 @@ private:
                 if(color > gui.BlackOrWhiteThreshold) judgeBlack = true;
                 else judgeBlack = false;
                 
-                if(i == 0) isBlack = judgeBlack;
+                if(i == 0){
+                    isBlack = judgeBlack;
+                    ofVec3f p = ofVec3f(cell/2, storageHeight/2, 2);
+                    //colorChangePoint.push_back(p);
+                }
                 else{
                     if(isBlack != judgeBlack){
                         isBlack = judgeBlack;
                         ofVec3f p = ofVec3f(cell*i+cell/2, storageHeight/2, (int)judgeBlack);
-                        stockPositionColor.push_back(p);
+                        colorChangePoint.push_back(p);
                     }
                 }
                 
@@ -1069,10 +1076,15 @@ private:
                 if(color > gui.BlackOrWhiteThreshold) judgeBlack = true;
                 else judgeBlack = false;
                 
+                if(i == 0){
+                    ofVec3f p = ofVec3f(WIDTH_PROCESS-cell/2, storageHeight/2, 2);
+                    //colorChangePoint.push_back(p);
+                }
+                
                 if(isBlack != judgeBlack){
                     isBlack = judgeBlack;
                     ofVec3f p = ofVec3f(maxX+storageWidth/2, cell*i+cell/2, (int)judgeBlack);
-                    stockPositionColor.push_back(p);
+                    colorChangePoint.push_back(p);
                 }
             }
             
@@ -1097,10 +1109,15 @@ private:
                 if(color > gui.BlackOrWhiteThreshold) judgeBlack = true;
                 else judgeBlack = false;
                 
+                if(i == 0){
+                    ofVec3f p = ofVec3f(WIDTH_PROCESS-cell/2, maxY+storageHeight/2, 2);
+                    //colorChangePoint.push_back(p);
+                }
+                
                 if(isBlack != judgeBlack){
                     isBlack = judgeBlack;
                     ofVec3f p = ofVec3f(cell*j+cell/2, maxY+storageHeight/2, (int)judgeBlack);
-                    stockPositionColor.push_back(p);
+                    colorChangePoint.push_back(p);
                 }
             }
             
@@ -1125,22 +1142,121 @@ private:
                 if(color > gui.BlackOrWhiteThreshold) judgeBlack = true;
                 else judgeBlack = false;
                 
+                if(i == 0){
+                    ofVec3f p = ofVec3f(cell/2, maxY+storageHeight/2, 2);
+                    //colorChangePoint.push_back(p);
+                }
                 
                 if(isBlack != judgeBlack){
                     isBlack = judgeBlack;
                     ofVec3f p = ofVec3f(storageWidth/2, cell*j+cell/2, (int)judgeBlack);
-                    stockPositionColor.push_back(p);
+                    colorChangePoint.push_back(p);
                 }
             }
             
+            
+            int count = 0;
+            for(int i=1; i<colorChangePoint.size(); i++){
+                
+                if(stockPositionColor.size() == 0){
+                    stockPositionColor.push_back(ofVec3f(storageWidth/2, storageHeight/2,2));
+                    count++;
+                }
+                
+                ofVec2f pre = colorChangePoint.at(i-1);
+                ofVec2f p = colorChangePoint.at(i);
+                ofVec2f diff = p - pre;
+                ofVec2f midd = (p+pre)/2;
+                
+                if(diff.x == 0 || diff.y == 0){
+                    stockPositionColor.push_back(ofVec3f(midd.x, midd.y, colorChangePoint[i-1].z));
+                }else{
+                    if(count == 1)
+                        stockPositionColor.push_back(ofVec3f(maxX+storageWidth/2, storageHeight/2,colorChangePoint[i-1].z));
+                    else if(count == 2)
+                        stockPositionColor.push_back(ofVec3f(maxX+storageWidth/2, maxY+storageHeight/2,colorChangePoint[i-1].z));
+                    else if(count == 3)
+                        stockPositionColor.push_back(ofVec3f(storageWidth/2, maxY+storageHeight/2,colorChangePoint[i-1].z));
+                    count ++;
+                }
+                
+            }
+            
             STEP = 11;
-            
         }
+        
         if(STEP == 11){
+            const int loop = gui.loopStorage;
+            const int index = (int)stockPositionIndex/loop;
             
+            int black = stockPositionColor[index+1].z;
+            if(black){
+                moveToFirst = ofVec2f(stockPositionColor[index+1].x,stockPositionColor[index+1].y);
+                moveToSecond = ofVec2f(stockPositionColor[index].x,stockPositionColor[index].y);
+            }else{
+                moveToFirst = ofVec2f(stockPositionColor[index].x,stockPositionColor[index].y);
+                moveToSecond = ofVec2f(stockPositionColor[index+1].x,stockPositionColor[index+1].y);
+            }
+        
+            STEP = 12;
+            osc.plotterDown();
+            plotterUp = false;
         }
-        
-        
+        if(STEP == 12){
+            float dist = moveToFirst.distance(plotterPosition);
+            
+//            ofVec2f rand = ofVec2f(ofRandom(-storageWidth/2, storageWidth/2),
+//                                   ofRandom(-storageHeight/2,storageHeight/2));
+            
+            //rand = ofVec2f(0,0);
+            
+            ofVec2f rand = ofVec2f(ofRandom(-STORAGE_OF_FILINGS/2, STORAGE_OF_FILINGS/2),
+                                   ofRandom(-STORAGE_OF_FILINGS/2, STORAGE_OF_FILINGS/2));
+            
+
+            osc.plotterDown();
+            plotterUp = false;
+            osc.send((moveToFirst+rand)/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
+            timeManager.start(dist/UNIT_DISRANCE_PER_SECOND);
+            plotterPosition = moveToFirst;
+            STEP = 13;
+        }else if(STEP == 13){
+            float dist = moveToSecond.distance(moveToFirst);
+            
+//            ofVec2f rand = ofVec2f(ofRandom(-storageWidth/2, storageWidth/2),
+//                                   ofRandom(-storageHeight/2,storageHeight/2));
+//            
+            //rand = ofVec2f(0,0);
+            ofVec2f rand = ofVec2f(ofRandom(-STORAGE_OF_FILINGS/2, STORAGE_OF_FILINGS/2),
+                                   ofRandom(-STORAGE_OF_FILINGS/2, STORAGE_OF_FILINGS/2));
+            
+            
+            osc.plotterUp();
+            plotterUp = true;
+            osc.send((moveToSecond+rand)/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
+            timeManager.start(dist/UNIT_DISRANCE_PER_SECOND);
+            plotterPosition = moveToSecond;
+            
+            int index = stockPositionIndex/gui.loopStorage;
+            stockPositionIndex++;
+            int newIndex = stockPositionIndex/gui.loopStorage;
+            if(index != newIndex){
+                cout << "stockPositionIndex/5 : " << stockPositionIndex/5 << endl;
+                cout << "stockPositionColor.size()-1 : " << stockPositionColor.size()-1 << endl;
+                if( (stockPositionIndex/gui.loopStorage) < stockPositionColor.size()-1 ) STEP = 11;
+                else STEP = 15;
+            }else{
+                STEP = 12;
+            }
+        }
+        if(STEP == 15){
+            isManageStorageMode = false;
+            STEP = 0;
+            plotterUp = false;
+            osc.plotterDown();
+            plotterPosition = ofVec2f(ofRandom(minX, maxX), ofRandom(minY, maxY));
+        }
+    
     }
     //--------------------------------------------------------------
     void drawStorage(){
@@ -1160,7 +1276,7 @@ private:
         ofDrawRectangle(moveToSecond.x, moveToSecond.y, CELL_SIZE, CELL_SIZE);
         ofDrawRectangle(moveToFirst.x, moveToFirst.y, CELL_SIZE, CELL_SIZE);
         
-        
+        ofSetLineWidth(2);
         if(isManageStorageMode){
             
 //            for(int i=0; i<stockPosition.size(); i++){
@@ -1176,25 +1292,26 @@ private:
             }
             ofSetColor(0,50,0);
             ofDrawCircle(moveInStorage.x, moveInStorage.y, STORAGE_OF_FILINGS/2);
-        }
-        
-        ofVec2f aroundCells[9] = {
-            ofVec2f(0,0), //center
-            ofVec2f(0,-1), //up
-            ofVec2f(1,0), //right
-            ofVec2f(0,1), //down
-            ofVec2f(-1,0), //left
-            ofVec2f(1,-1), //up right
-            ofVec2f(1,1), //down right
-            ofVec2f(-1,1), //down left
-            ofVec2f(-1,-1) //left up
-        };
-        
-        ofSetRectMode(OF_RECTMODE_CORNER);
-        for(int i=0; i<NUM_CELLS_AROUND_TARGET; i++){
-            ofDrawBitmapStringHighlight(ofToString(howHungryPerCell[i]),
-                                        plotterPosition + aroundCells[i]*40 + ofVec2f(-15, 6),
-                                        ofColor(0,100), ofColor(255));
+        }else{
+            
+            ofVec2f aroundCells[9] = {
+                ofVec2f(0,0), //center
+                ofVec2f(0,-1), //up
+                ofVec2f(1,0), //right
+                ofVec2f(0,1), //down
+                ofVec2f(-1,0), //left
+                ofVec2f(1,-1), //up right
+                ofVec2f(1,1), //down right
+                ofVec2f(-1,1), //down left
+                ofVec2f(-1,-1) //left up
+            };
+            
+            ofSetRectMode(OF_RECTMODE_CORNER);
+            for(int i=0; i<NUM_CELLS_AROUND_TARGET; i++){
+                ofDrawBitmapStringHighlight(ofToString(howHungryPerCell[i]),
+                                            plotterPosition + aroundCells[i]*40 + ofVec2f(-15, 6),
+                                            ofColor(0,100), ofColor(255));
+            }
         }
         ofPopStyle();
         
@@ -1261,58 +1378,6 @@ public:
         
         if(key == 'g') gui.setIsDraw();
         
-        /*
-         if(key == 't') isTrimmingMode = !isTrimmingMode;
-         if(isTrimmingMode){
-         if(key == 'c'){
-         trimmedPosition.clear();
-         trimmedArea.setSize(0,0);
-         }
-         ofVec2f p = plotterPosition/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS); //0-1
-         float plus = 0.001;
-         
-         if(key == OF_KEY_UP){
-         p.y = MAX(p.y - plus, 0);
-         osc.send(p);
-         }
-         if(key == OF_KEY_DOWN){
-         p.y = MIN(p.y + plus, 1);
-         osc.send(p);
-         }
-         if(key == OF_KEY_RIGHT){
-         p.x = MIN(p.x + plus, 1);
-         osc.send(p);
-         }
-         if(key == OF_KEY_LEFT){
-         p.x = MAX(p.x - plus, 0);
-         osc.send(p);
-         }
-         plotterPosition = p*ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS);
-         
-         if(key == 'o') osc.setRange(0, p.x, 0, p.y);
-         if(key == 'm'){
-         osc.moveToMax();
-         plotterPosition = osc.getRangeMax() * ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS);
-         }
-         if(key == 'u') osc.plotterUp();
-         if(key == 'd') osc.plotterDown();
-         }
-         if(key == 'r'){
-         osc.reset();
-         plotterPosition = ofVec2f(0,0);
-         }
-         if(key == 'd') isColorDebugMode = !isColorDebugMode;
-         if(key == 'a') isCalibrationMode = !isCalibrationMode;
-         
-         if(key == 's'){
-         ofPixels pixels;
-         pixels = colorIronFilingsImage.getPixels();
-         string name = ofToString(ofGetFrameNum());
-         name += ".png";
-         ofSaveImage(pixels, name);
-         }
-         
-         */
     }
     //--------------------------------------------------------------
     void mousePressed(int x, int y){
