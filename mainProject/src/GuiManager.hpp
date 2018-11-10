@@ -27,9 +27,9 @@ private:
 
 
 public:
-    ofxIntField CELL, STORAGE_OF_FILINGS, COUNTER_LIMIT, howRandomPoint, monoThreshold, BlackOrWhiteThreshold, loopStorage;
+    ofxIntField CELL, STORAGE_OF_FILINGS, COUNTER_LIMIT, howRandomPoint, monoThreshold, BlackOrWhiteThreshold, loopStorage, mostDifferentInStorage;
     ofxFloatField UNIT_DISRANCE_PER_SECOND, test;
-    ofxButton point_00, point_W0, point_WH, point_0H, oscReset, screenShot, clearPosition, setRange,plotterUp, plotterDown;
+    ofxButton point_00, point_W0, point_WH, point_0H, point_0M, point_M0, point_MM,oscReset, screenShot, clearPosition, setRange,plotterUp, plotterDown;
     ofxToggle trimmingMode, mouseDebugMode, searchColorMode, viewGrid;
     ofxIntField convertMin, convertMax;
     
@@ -56,6 +56,7 @@ public:
         gui.add(monoThreshold.setup("cv mono threshold", 125, 0, 255));
         gui.add(BlackOrWhiteThreshold.setup("black or white threshold", 120, 0, 255));
         gui.add(loopStorage.setup("loop storage", 5, 1, 30));
+        gui.add(mostDifferentInStorage.setup("most difference", 50, 0, 255));
         
         label1.setBackgroundColor(labelColor);
         gui.add(label1.setup("", "plotter calibration"));
@@ -64,6 +65,9 @@ public:
         gui.add(point_W0.setup("Move to (MAX_WIDTH, 0)"));
         gui.add(point_0H.setup("Move to (0, MAX_HEIGHT)"));
         gui.add(point_WH.setup("Move to (MAX_WIDTH, MAX_HEIGHT)"));
+        gui.add(point_M0.setup("Move to (MIDDLE_WIDTH, 0)"));
+        gui.add(point_0M.setup("Move to (0, MIDDLE_HEIGHT)"));
+        gui.add(point_MM.setup("Move to (MIDDLE_WIDTH, MIDDLE_HEIGHT)"));
         gui.add(plotterUp.setup("magnet up"));
         gui.add(plotterDown.setup("magnet down"));
         gui.add(clearPosition.setup("clear positions"));

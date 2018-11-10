@@ -13,7 +13,7 @@
 #include "ofMain.h"
 #include "ofxOscSender.h"
 
-#define DEBUG
+//#define DEBUG
 
 #define IP "128.237.208.140"
 #define PORT 12345
