@@ -106,7 +106,7 @@ private:
         peopleCamera.setDeviceID(0);
         peopleCamera.initGrabber(WIDTH_PROCESS, HEIGHT_PROCESS);
 #else
-        peopleTestImage.load("IMG_0353.jpg");
+        peopleTestImage.load("IMG_03532.jpg");
         peopleTestImage.resize(WIDTH_PROCESS, HEIGHT_PROCESS);
         peopleTestImage.setImageType(OF_IMAGE_COLOR);
         colorPeopleImage = peopleTestImage;
@@ -182,9 +182,11 @@ private:
                 if(!isManageStorageMode){
                     int range = gui.howRandomPoint;
                     
+                    /*
                     if(plotterPosition.x < minX || plotterPosition.x > maxX || plotterPosition.y < minY || plotterPosition.y > maxY){
                         plotterPosition = ofVec2f(ofRandom(minX, maxX), ofRandom(minY, maxY));
                     }
+                     */
                     
                     ofVec2f rand;
                     if(plotterPosition.x <= range) rand.x = ofRandom(-plotterPosition.x, range+range-plotterPosition.x);
