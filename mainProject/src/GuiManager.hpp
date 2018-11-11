@@ -48,7 +48,7 @@ public:
         
         label0.setBackgroundColor(labelColor);
         gui.add(label0.setup("","parameter settings"));
-        gui.add(CELL.setup("CELL", 30, 2, 100));
+        gui.add(CELL.setup("CELL", 20, 2, 100));
         gui.add(STORAGE_OF_FILINGS.setup("STORAGE_OF_FILINGS", 40, 0, 100));
         gui.add(UNIT_DISRANCE_PER_SECOND.setup("UNIT_DISRANCE_PER_SECOND", 8.5, 1, 20));
         gui.add(COUNTER_LIMIT.setup("COUNTER_LIMIT", 200, 1, 500));
@@ -83,8 +83,8 @@ public:
         gui.add(label3.setup("", ""));
         gui.add(screenShot.setup("screen shot"));
         gui.add(test.setup("test float parameter", 1, 0, 1));
-        gui.add(convertMin.setup("color convert min", 40, 0, 255));
-        gui.add(convertMax.setup("color convert max", 255, 0, 255));
+        gui.add(convertMin.setup("color convert min", 50, 0, 255));
+        gui.add(convertMax.setup("color convert max", 200, 0, 255));
         gui.add(viewGrid.setup("show grid", false));
         
     }
