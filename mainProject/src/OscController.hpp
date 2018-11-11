@@ -13,9 +13,9 @@
 #include "ofMain.h"
 #include "ofxOscSender.h"
 
-#define DEBUG
+//#define DEBUG
 
-#define IP "128.237.222.180"
+#define IP "128.237.166.1"
 #define PORT 12345
 
 class OscController
@@ -37,6 +37,9 @@ public:
             ofVec2f p;
             p.x = position.x*(max.x - min.x) + min.x;
             p.y = position.y*(max.y - min.y) + min.y;
+            
+            p.x = MIN(1, MAX(0,p.x));
+            p.y = MIN(1, MAX(0,p.y));
             
             ofxOscMessage m;
             m.setAddress("/plotter/position/");
@@ -78,7 +81,7 @@ public:
     }
     
     void moveToMax(){
-        plotterDown();
+        //plotterDown();
         send(max);
     }
     
