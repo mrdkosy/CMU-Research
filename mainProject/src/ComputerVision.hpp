@@ -14,6 +14,7 @@
 #include "GuiManager.hpp"
 #include "ofxOpenCv.h"
 #include "ofxCv.h"
+#include "ofxPDF.h"
 
 //#define DEBUG
 //#define REALTIME_CAPTURE_PEOPLE
@@ -44,6 +45,119 @@ public:
     float getLeftTime(){
         return MAX(0, timeLimit - (ofGetElapsedTimef() - startTime));
     }
+};
+
+class PDFtoVertices{
+    ofxPDF _pdf;
+    vector<ofPolyline> polys;
+    vector< vector<ofVec2f> > vertices;
+    ofVec2f _pos, _size;
+    int indexPoly, indexVertices;
+    bool isFinish;
+public:
+    void set(string file, ofVec2f pos, ofVec2f size){
+        _pos = pos;
+        _size = size;
+        _pdf.load(file);
+        for(int i=0; i<_pdf.getNumPath(); i++){
+            ofPath& path = _pdf.getPathAt(i);
+            const vector<ofPolyline> &tmpPoly = path.getOutline();
+            for(int k=0; k<tmpPoly.size(); k++){
+                polys.push_back(tmpPoly[k]);
+                
+            }
+        }
+        
+        for(int k=0; k<polys.size(); k++){
+            auto verts = polys[k].getVertices();
+            vector<ofVec2f> position;
+            for(int j=0; j<verts.size(); j++){
+                float x = verts[j].x;
+                float y = verts[j].y;
+                x *= _size.x/_pdf.getWidth();
+                y *= _size.y/_pdf.getHeight();
+                position.push_back(ofVec2f(x+_pos.x, y+_pos.y));
+                
+                if(j == verts.size()-1){
+                    float x = verts[0].x;
+                    float y = verts[0].y;
+                    x *= _size.x/_pdf.getWidth();
+                    y *= _size.y/_pdf.getHeight();
+                    position.push_back(ofVec2f(x+_pos.x, y+_pos.y));
+                }
+                
+            }
+            //cout << "vertices size: " << position.size() << endl;
+            vertices.push_back(position);
+        }
+        
+        resetCount();
+    }
+    
+    vector<vector<ofVec2f>> & getVertices(){
+        return vertices;
+    }
+    
+    ofVec2f getVerticesAt(){
+        //cout << "indexPoly: " << indexPoly << endl;
+        //cout << "indexVertices: " << indexVertices << endl;
+        return vertices[indexPoly][indexVertices];
+    }
+    
+    int updatePosition(){
+        
+        int value = 0; // 0:nothing 1:up 2:down
+        
+        int size = vertices[indexPoly].size();
+        int nextIndex = indexVertices + 1;
+        
+        if(size <= nextIndex){
+            indexVertices = 0;
+            indexPoly++;
+            if(indexPoly >= vertices.size()){
+                isFinish = true;
+                indexPoly = 0;
+                indexVertices = 0;
+            }
+        }else{
+            indexVertices++;
+        }
+        
+        if(indexVertices == 1) return 2;
+        else if(indexVertices == 2) return 1;
+        else return 0;
+        
+    }
+    
+    void resetCount(){
+        indexPoly = 0;
+        indexVertices = 0;
+        isFinish = false;
+    }
+    bool getFinished(){
+        return isFinish;
+    }
+    
+    
+    void draw(){
+        ofPushStyle();
+        ofFill();
+        int count = 0;
+        for(int i=0; i<vertices.size(); i++){
+            for(int j=0; j<vertices[i].size(); j++){
+                ofSetColor(255, 0, 0);
+                float x = vertices[i][j].x;
+                float y = vertices[i][j].y;
+                ofDrawCircle(x, y, 10);
+                ofDrawBitmapStringHighlight(ofToString(count), ofVec2f(x,y),
+                                            ofColor(255, 120), ofColor(0, 255));
+                count++;
+            }
+        }
+        ofPopStyle();
+        
+    }
+    
 };
 
 class ComputerVision{
@@ -85,6 +199,8 @@ private:
     
     GuiManager gui;
     
+    PDFtoVertices pdf;
+    
     //--------------------------------------------------------------
     void init(){
         
@@ -106,12 +222,11 @@ private:
         peopleCamera.setDeviceID(0);
         peopleCamera.initGrabber(WIDTH_PROCESS, HEIGHT_PROCESS);
 #else
-        peopleTestImage.load("circles.png");
+        peopleTestImage.load("triangles23.png");
         peopleTestImage.resize(WIDTH_PROCESS, HEIGHT_PROCESS);
         peopleTestImage.setImageType(OF_IMAGE_COLOR);
         colorPeopleImage = peopleTestImage;
 #endif
-        
         
         
 #ifdef REALTIME_CAPTURE_IRONFILINGS
@@ -141,8 +256,6 @@ private:
         plotterUp = false;
         osc.reset();
         
-        
-        
         //set strage
         STORAGE_OF_FILINGS = gui.getStorageValue();
         int sh = STORAGE_OF_FILINGS*2;
@@ -160,6 +273,8 @@ private:
         COUNTER = 0;
         
         isSearchCellColor = false;
+     
+        pdf.set("triangles24.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
         
     }
     //--------------------------------------------------------------
@@ -183,27 +298,46 @@ private:
                     int range = gui.howRandomPoint;
                     
                     
-
-                    if(plotterPosition.x < minX || plotterPosition.x > maxX || plotterPosition.y < minY || plotterPosition.y > maxY){
-                        plotterPosition = ofVec2f(ofRandom(minX, maxX), ofRandom(minY, maxY));
-                    }
-                     
-                    
+                    int ratio = (int)ofRandom(0, gui.controllStorageRatio);
                     
                     ofVec2f rand;
-                    if(plotterPosition.x <= range) rand.x = ofRandom(-plotterPosition.x, range+range-plotterPosition.x);
-                    else if(plotterPosition.x >= WIDTH_PROCESS-range) rand.x = ofRandom(-(range+range-(WIDTH_PROCESS-plotterPosition.x)), WIDTH_PROCESS-plotterPosition.x);
-                    else rand.x = ofRandom(-range, range);
-                    
-                    if(plotterPosition.y <= range) rand.y = ofRandom(-plotterPosition.y, range+range-plotterPosition.y);
-                    else if(plotterPosition.y >= HEIGHT_PROCESS-range) rand.y = ofRandom(-(range+range-(HEIGHT_PROCESS-plotterPosition.y)), HEIGHT_PROCESS-plotterPosition.y);
-                    else rand.y = ofRandom(-range, range);
+                    if(ratio == 0){
+                        if(plotterPosition.x <= range) rand.x = ofRandom(-plotterPosition.x, range+range-plotterPosition.x);
+                        else if(plotterPosition.x >= WIDTH_PROCESS-range) rand.x = ofRandom(-(range+range-(WIDTH_PROCESS-plotterPosition.x)), WIDTH_PROCESS-plotterPosition.x);
+                        else rand.x = ofRandom(-range, range);
+                        
+                        if(plotterPosition.y <= range) rand.y = ofRandom(-plotterPosition.y, range+range-plotterPosition.y);
+                        else if(plotterPosition.y >= HEIGHT_PROCESS-range) rand.y = ofRandom(-(range+range-(HEIGHT_PROCESS-plotterPosition.y)), HEIGHT_PROCESS-plotterPosition.y);
+                        else rand.y = ofRandom(-range, range);
+                    }else{
+                        
+                        if(plotterPosition.x < (minX+range)){
+                            plotterPosition.x = 0;
+                            rand.x = ofRandom(minX, minX+range+range);
+                        }else if(plotterPosition.x > (maxX-range)){
+                            plotterPosition.x = 0;
+                            rand.x = ofRandom(maxX-range-range, maxX);
+                        }else{
+                            rand.x = ofRandom(-range, range);
+                        }
+                        
+                        if(plotterPosition.y < (minY+range)){
+                            plotterPosition.y = 0;
+                            rand.y = ofRandom(minY, minY+range+range);
+                        }else if(plotterPosition.y > (maxY-range)){
+                            plotterPosition.y = 0;
+                            rand.y = ofRandom(maxY-range-range, maxY);
+                        }else{
+                            rand.y = ofRandom(-range, range);
+                        }
+                    }
                     
                     
                     int nx = plotterPosition.x + rand.x;
                     int ny = plotterPosition.y + rand.y;
                     
                     callCalculateImageColor(ofVec2f(nx, ny));
+                    
                 }else{ //manage the storage of filings
                     calculateFilingsStorage();
                 }
@@ -316,7 +450,11 @@ private:
             ofSaveImage(pixels, name);
         }
         
-        CELL = gui.CELL;
+        
+        int half_count = gui.COUNTER_LIMIT/2;
+        if(COUNTER < half_count) CELL = gui.CELL*3;
+        else CELL = gui.CELL;
+        
         UNIT_DISRANCE_PER_SECOND = (WIDTH_PROCESS/gui.UNIT_DISRANCE_PER_SECOND);
         
         if(gui.getIsStorageChanged()){
@@ -362,6 +500,7 @@ private:
         ofPushMatrix();
         ofTranslate(WIDTH_VIEW, 0);
         goalImage.draw(0, 0, WIDTH_VIEW, HEIGHT_VIEW);
+        pdf.draw();
         drawPlotterInformation();
         drawStorage();
         drawText("grayscale image of people from camera");
@@ -1263,14 +1402,45 @@ private:
             plotterPosition = p;
             
             if(COUNTER == 4){
-                isManageStorageMode = false;
+                //isManageStorageMode = false;
                 COUNTER = 0;
-                STEP = 0;
+                STEP = 6;
                 moveToSecond = p;
-                plotterPosition = ofVec2f(ofRandom(minX, maxX), ofRandom(minY, maxY));
+                plotterPosition = p;
+                //plotterPosition = ofVec2f(ofRandom(minX, maxX), ofRandom(minY, maxY));
             }
             COUNTER++;
+        }else if(STEP == 6){ // move on outline of the figure
+            
+            const ofVec2f nowPosition = plotterPosition;
+            const ofVec2f nextPosition = pdf.getVerticesAt();
+            
+            int motion = pdf.updatePosition(); //motion 0:nothing 1:up 2:down
+            
+            if(motion == 1){
+                plotterUp = true;
+                osc.plotterUp();
+            }else if(motion == 2){
+                plotterUp = false;
+                osc.plotterDown();
+            }
+            
+            osc.send(nextPosition/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
+            float dist = nextPosition.distance(nowPosition);
+            timeManager.start(dist/UNIT_DISRANCE_PER_SECOND);
+            plotterPosition = nextPosition;
+            
+            if(pdf.getFinished()){
+                isManageStorageMode = false;
+                STEP = 0;
+                moveToSecond = nextPosition;
+                plotterPosition = ofVec2f(ofRandom(minX, maxX), ofRandom(minY, maxY));
+                pdf.resetCount();
+            }
         }
+        
+        //--------------------
+        
         
         if(STEP == 10){
             ofPixels pixels;
@@ -1531,12 +1701,10 @@ private:
         ofDrawRectangle(moveToSecond.x, moveToSecond.y, CELL_SIZE, CELL_SIZE);
         ofDrawRectangle(moveToFirst.x, moveToFirst.y, CELL_SIZE, CELL_SIZE);
         
-        ofSetLineWidth(2);
+        //ofSetLineWidth(2);
         if(isManageStorageMode){
             
-//            for(int i=0; i<stockPosition.size(); i++){
-//                ofDrawCircle(stockPosition[i].x, stockPosition[i].y, STORAGE_OF_FILINGS/2);
-//            }
+            /*
             for(int i=0; i<stockPositionColor.size(); i++){
                 
                 if( stockPositionColor[i].z == 1 ) ofSetColor(0,100,0);
@@ -1547,6 +1715,9 @@ private:
             }
             ofSetColor(0,50,0);
             ofDrawCircle(moveInStorage.x, moveInStorage.y, STORAGE_OF_FILINGS/2);
+            */
+            ofSetColor(0,150, 0);
+            ofDrawCircle(plotterPosition.x, plotterPosition.y, CELL);
         }else{
             
             ofVec2f aroundCells[9] = {
