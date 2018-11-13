@@ -187,8 +187,8 @@ private:
     vector<ofVec2f> stockPosition;
     vector<ofVec3f> stockPositionColor;
     int stockPositionIndex;
-    ofVec2f cornerPoints[5] = {ofVec2f(0,0), ofVec2f(WIDTH_PROCESS,0), ofVec2f(WIDTH_PROCESS,HEIGHT_PROCESS), ofVec2f(0,HEIGHT_PROCESS),ofVec2f(0,0)};
-    int COUNTER;
+    ofVec2f cornerPoints[10] = {ofVec2f(0,0), ofVec2f(WIDTH_PROCESS,0), ofVec2f(WIDTH_PROCESS,HEIGHT_PROCESS), ofVec2f(0,HEIGHT_PROCESS),ofVec2f(0,0), ofVec2f(0,0), ofVec2f(0,0), ofVec2f(0,0), ofVec2f(0,0), ofVec2f(0,0)};
+    int COUNTER, LOOP_COUNTER;
     ofImage horizonalSobel, verticalSobel, thresholdImg, testImg;
     ofVec3f whiteOrBlackInStorage; //if w-value is 1, the point is the edge of black area
     bool isSearchCellColor;
@@ -222,7 +222,9 @@ private:
         peopleCamera.setDeviceID(0);
         peopleCamera.initGrabber(WIDTH_PROCESS, HEIGHT_PROCESS);
 #else
-        peopleTestImage.load("triangles23.png");
+        //peopleTestImage.load("triangles23.png");
+//        peopleTestImage.load("circles2.png");
+        peopleTestImage.load("wave2.png");
         peopleTestImage.resize(WIDTH_PROCESS, HEIGHT_PROCESS);
         peopleTestImage.setImageType(OF_IMAGE_COLOR);
         colorPeopleImage = peopleTestImage;
@@ -265,6 +267,14 @@ private:
         storageOfFilings.setPosition(sw/2, sh/2);
         storageOfFilings.setSize(w, h);
         
+        int x = sw/2;
+        int y = sh/2;
+        cornerPoints[5] = ofVec2f(x,y);
+        cornerPoints[6] = ofVec2f(x+w,y);
+        cornerPoints[7] = ofVec2f(x+w,y+h);
+        cornerPoints[8] = ofVec2f(x,y+h);
+        cornerPoints[9] = ofVec2f(x,y);
+        
         CELL = gui.CELL;
         UNIT_DISRANCE_PER_SECOND = (WIDTH_PROCESS/gui.UNIT_DISRANCE_PER_SECOND);
         
@@ -274,7 +284,10 @@ private:
         
         isSearchCellColor = false;
      
-        pdf.set("triangles24.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
+        pdf.set("wave2.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
+//        pdf.set("circles2.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
+        //pdf.set("triangles24.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
+        LOOP_COUNTER = 0;
         
     }
     //--------------------------------------------------------------
@@ -500,7 +513,7 @@ private:
         ofPushMatrix();
         ofTranslate(WIDTH_VIEW, 0);
         goalImage.draw(0, 0, WIDTH_VIEW, HEIGHT_VIEW);
-        pdf.draw();
+        if(gui.viewPDF) pdf.draw();
         drawPlotterInformation();
         drawStorage();
         drawText("grayscale image of people from camera");
@@ -593,6 +606,8 @@ private:
         if(isSearchCellColor) searchCellColor();
         drawStorage();
         drawText("cv image of iron filings");
+        ofDrawBitmapStringHighlight("COUNTER: "+ofToString(COUNTER), 10, 40, ofColor(255), ofColor(0));
+        ofDrawBitmapStringHighlight("LOOP COUNTER: "+ofToString(LOOP_COUNTER), 10, 60, ofColor(255), ofColor(0));
         ofPopMatrix();
         
         
@@ -1395,13 +1410,13 @@ private:
             p.x == 0 ? dx = 1 : dx = -1;
             p.y == 0 ? dy = 1 : dy = -1;
             
-            ofVec2f rand = ofVec2f(ofRandom(storageWidth), ofRandom(storageHeight)) * ofVec2f(dx, dy);
-            p = p + rand;
+            //ofVec2f rand = ofVec2f(ofRandom(storageWidth), ofRandom(storageHeight)) * ofVec2f(dx, dy);
+            //p = p + rand;
             osc.send(p/ofVec2f(WIDTH_PROCESS, HEIGHT_PROCESS));
             timeManager.start(dist/UNIT_DISRANCE_PER_SECOND);
             plotterPosition = p;
             
-            if(COUNTER == 4){
+            if(COUNTER == 9){
                 //isManageStorageMode = false;
                 COUNTER = 0;
                 STEP = 6;
@@ -1433,6 +1448,7 @@ private:
             if(pdf.getFinished()){
                 isManageStorageMode = false;
                 STEP = 0;
+                LOOP_COUNTER++;
                 moveToSecond = nextPosition;
                 plotterPosition = ofVec2f(ofRandom(minX, maxX), ofRandom(minY, maxY));
                 pdf.resetCount();
@@ -1703,19 +1719,6 @@ private:
         
         //ofSetLineWidth(2);
         if(isManageStorageMode){
-            
-            /*
-            for(int i=0; i<stockPositionColor.size(); i++){
-                
-                if( stockPositionColor[i].z == 1 ) ofSetColor(0,100,0);
-                else if(stockPositionColor[i].z == 2) ofSetColor(180,180,180);
-                else ofSetColor(0,200,0);
-                
-                ofDrawCircle(stockPositionColor[i].x, stockPositionColor[i].y, STORAGE_OF_FILINGS/2);
-            }
-            ofSetColor(0,50,0);
-            ofDrawCircle(moveInStorage.x, moveInStorage.y, STORAGE_OF_FILINGS/2);
-            */
             ofSetColor(0,150, 0);
             ofDrawCircle(plotterPosition.x, plotterPosition.y, CELL);
         }else{
