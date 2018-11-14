@@ -222,11 +222,11 @@ private:
         peopleCamera.setDeviceID(0);
         peopleCamera.initGrabber(WIDTH_PROCESS, HEIGHT_PROCESS);
 #else
-        //peopleTestImage.load("triangles23.png");
+        peopleTestImage.load("triangles23.png");
         //peopleTestImage.load("circles2.png");
         //peopleTestImage.load("wave2.png");
         //peopleTestImage.load("circlebubble.png");
-        peopleTestImage.load("comesee2.png");
+        //peopleTestImage.load("comesee2.png");
         peopleTestImage.resize(WIDTH_PROCESS, HEIGHT_PROCESS);
         peopleTestImage.setImageType(OF_IMAGE_COLOR);
         colorPeopleImage = peopleTestImage;
@@ -287,10 +287,10 @@ private:
         isSearchCellColor = false;
      
         //pdf.set("circlebubble.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
-        pdf.set("comesee2.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
+        //pdf.set("comesee2.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
         //pdf.set("wave2.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
         //pdf.set("circles2.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
-        //pdf.set("triangles24.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
+        pdf.set("triangles24.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
         LOOP_COUNTER = 0;
         
     }
@@ -565,7 +565,9 @@ private:
          *******************/
         
 #ifdef REALTIME_CAPTURE_IRONFILINGS
-        colorIronFilingsImage.setFromPixels(ironFilingsCamera.getPixels());
+        ofImage img(ironFilingsCamera.getPixels());
+        if(gui.isRotate) img.rotate90(2);
+        colorIronFilingsImage.setFromPixels(img.getPixels());
 #endif
         ofPushMatrix();
         ofTranslate(0, HEIGHT_VIEW);

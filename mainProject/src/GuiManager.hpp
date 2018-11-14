@@ -30,7 +30,7 @@ public:
     ofxIntField CELL, STORAGE_OF_FILINGS, COUNTER_LIMIT, howRandomPoint, monoThreshold, BlackOrWhiteThreshold, loopStorage, mostDifferentInStorage, controllStorageRatio;
     ofxFloatField UNIT_DISRANCE_PER_SECOND, test;
     ofxButton point_00, point_W0, point_WH, point_0H, point_0M, point_M0, point_MM,oscReset, screenShot, clearPosition, setRange,plotterUp, plotterDown;
-    ofxToggle trimmingMode, mouseDebugMode, searchColorMode, viewGrid, viewPDF;
+    ofxToggle trimmingMode, mouseDebugMode, searchColorMode, viewGrid, viewPDF, isRotate;
     ofxIntField convertMin, convertMax;
     
     GuiManager(){
@@ -51,7 +51,7 @@ public:
         gui.add(CELL.setup("CELL", 20, 2, 100));
         gui.add(STORAGE_OF_FILINGS.setup("STORAGE_OF_FILINGS", 40, 0, 100));
         gui.add(UNIT_DISRANCE_PER_SECOND.setup("UNIT_DISRANCE_PER_SECOND", 8.5, 1, 20));
-        gui.add(COUNTER_LIMIT.setup("COUNTER_LIMIT", 150, 1, 2000));
+        gui.add(COUNTER_LIMIT.setup("COUNTER_LIMIT", 120, 1, 2000));
         gui.add(howRandomPoint.setup("how random points", 80, 10, 300));
         gui.add(monoThreshold.setup("cv mono threshold", 125, 0, 255));
         gui.add(BlackOrWhiteThreshold.setup("black or white threshold", 120, 0, 255));
@@ -85,10 +85,10 @@ public:
         gui.add(screenShot.setup("screen shot"));
         gui.add(test.setup("test float parameter", 1, 0, 1));
         gui.add(convertMin.setup("color convert min", 50, 0, 255));
-        gui.add(convertMax.setup("color convert max", 200, 0, 255));
+        gui.add(convertMax.setup("color convert max", 255, 0, 255));
         gui.add(viewGrid.setup("show grid", false));
-        gui.add(viewPDF.setup("show pdf information", true));
-        
+        gui.add(viewPDF.setup("show pdf information", false));
+        gui.add(isRotate.setup("is rotate", true));
     }
     void setIsDraw(){
         isDraw = !isDraw;
