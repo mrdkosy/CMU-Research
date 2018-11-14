@@ -2,6 +2,8 @@
 ofxPDF pdf;
 vector<ofPolyline> polys;
 ofImage image;
+
+ofxSVG svg;
 //--------------------------------------------------------------
 void ofApp::setup(){
     
@@ -17,6 +19,7 @@ void ofApp::setup(){
         }
     }
     
+    svg.load("triangles22.svg");
 }
 
 //--------------------------------------------------------------
@@ -29,6 +32,7 @@ void ofApp::draw(){
     
     
     ofSetColor(255);
+    /*
     image.draw(0, 0, 640, 480);
     
     int count = 0;
@@ -52,6 +56,8 @@ void ofApp::draw(){
         //polys[k].draw();
         
     }
+     */
+    svg.draw();
 
 }
 

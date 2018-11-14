@@ -51,7 +51,7 @@ public:
         gui.add(CELL.setup("CELL", 20, 2, 100));
         gui.add(STORAGE_OF_FILINGS.setup("STORAGE_OF_FILINGS", 40, 0, 100));
         gui.add(UNIT_DISRANCE_PER_SECOND.setup("UNIT_DISRANCE_PER_SECOND", 8.5, 1, 20));
-        gui.add(COUNTER_LIMIT.setup("COUNTER_LIMIT", 200, 1, 2000));
+        gui.add(COUNTER_LIMIT.setup("COUNTER_LIMIT", 150, 1, 2000));
         gui.add(howRandomPoint.setup("how random points", 80, 10, 300));
         gui.add(monoThreshold.setup("cv mono threshold", 125, 0, 255));
         gui.add(BlackOrWhiteThreshold.setup("black or white threshold", 120, 0, 255));
