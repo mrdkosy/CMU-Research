@@ -168,6 +168,8 @@ private:
     ofVideoGrabber ironFilingsCamera, peopleCamera;
     ofFbo realIronFilingsImage, goalImage;
     ofImage peopleTestImage, ironfilingsTestImage;
+    vector<ofImage> peopleTestImageArray;
+    int peopleTestImageArrayIndex;
     ofxCvGrayscaleImage grayIronFilingsImage, grayPeopleImage;
     ofxCvColorImage colorIronFilingsImage, colorPeopleImage, trimmedIronFilingsImage;
     ofRectangle trimmedArea; //trimming the image from iron filings camera
@@ -200,9 +202,40 @@ private:
     GuiManager gui;
     
     PDFtoVertices pdf;
+    vector<PDFtoVertices> pdfArray;
+    int pdfArrayIndex;
     
     //--------------------------------------------------------------
     void init(){
+        //peopleTestImageArray[peopleTestImageArrayIndex].resize(WIDTH_PROCESS, HEIGHT_PROCESS);
+        //peopleTestImageArray[peopleTestImageArrayIndex].setImageType(OF_IMAGE_COLOR);
+        
+        peopleTestImageArrayIndex = 0;
+        
+
+        
+        ofImage img1("triangles23.png");
+        img1.resize(WIDTH_PROCESS, HEIGHT_PROCESS);
+        img1.setImageType(OF_IMAGE_COLOR);
+        peopleTestImageArray.push_back(img1);
+        
+        ofImage img2("circles2.png");
+        img2.resize(WIDTH_PROCESS, HEIGHT_PROCESS);
+        img2.setImageType(OF_IMAGE_COLOR);
+        peopleTestImageArray.push_back(img2);
+        
+        ofImage img3("wave2.png");
+        img3.resize(WIDTH_PROCESS, HEIGHT_PROCESS);
+        img3.setImageType(OF_IMAGE_COLOR);
+        peopleTestImageArray.push_back(img3);
+        //peopleTestImageArray.push_back(ofImage("circlebubble.png"));
+        //peopleTestImageArray.push_back(ofImage("comesee2.png"));
+        
+        ofImage img4("sihouetteface2.png");
+        img4.resize(WIDTH_PROCESS, HEIGHT_PROCESS);
+        img4.setImageType(OF_IMAGE_COLOR);
+        peopleTestImageArray.push_back(img4);
+
         
         realIronFilingsImage.allocate(WIDTH_PROCESS, HEIGHT_PROCESS);
         goalImage.allocate(WIDTH_PROCESS, HEIGHT_PROCESS);
@@ -222,7 +255,9 @@ private:
         peopleCamera.setDeviceID(0);
         peopleCamera.initGrabber(WIDTH_PROCESS, HEIGHT_PROCESS);
 #else
-        peopleTestImage.load("triangles23.png");
+        peopleTestImage = peopleTestImageArray[peopleTestImageArrayIndex];
+        //peopleTestImage.load("sihouetteface.png");
+        //peopleTestImage.load("triangles23.png");
         //peopleTestImage.load("circles2.png");
         //peopleTestImage.load("wave2.png");
         //peopleTestImage.load("circlebubble.png");
@@ -285,12 +320,40 @@ private:
         COUNTER = 0;
         
         isSearchCellColor = false;
-     
+        
+
+        //pdf.set("sihouetteface.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
         //pdf.set("circlebubble.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
         //pdf.set("comesee2.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
         //pdf.set("wave2.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
         //pdf.set("circles2.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
-        pdf.set("triangles24.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
+        //pdf.set("triangles24.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
+        
+        pdfArrayIndex = 0;
+
+        PDFtoVertices p1;
+        p1.set("tom.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
+        pdfArray.push_back(p1);
+        PDFtoVertices p2;
+        p2.set("circles2.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
+        pdfArray.push_back(p2);
+        PDFtoVertices p3;
+        p3.set("wave2.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
+        pdfArray.push_back(p3);
+        
+        PDFtoVertices p6;
+        p6.set("sihouetteface2.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
+        pdfArray.push_back(p6);
+
+        //PDFtoVertices p4;
+        //p4.set("circlebubble.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
+        //pdfArray.push_back(p4);
+        //PDFtoVertices p5;
+        //p5.set("comesee2.pdf", ofVec2f(sw/2, sh/2), ofVec2f(w, h));
+        //pdfArray.push_back(p5);
+
+        pdf = pdfArray[pdfArrayIndex];
+        
         LOOP_COUNTER = 0;
         
     }
@@ -496,7 +559,7 @@ private:
         colorPeopleImage.setFromPixels(peopleCamera.getPixels());
 #endif
         colorPeopleImage.draw(0,0, WIDTH_VIEW, HEIGHT_VIEW);
-        drawText("real image of people from camera");
+        drawText("real image of simple figure");
         
         
         /*******************
@@ -517,10 +580,10 @@ private:
         ofPushMatrix();
         ofTranslate(WIDTH_VIEW, 0);
         goalImage.draw(0, 0, WIDTH_VIEW, HEIGHT_VIEW);
-        if(gui.viewPDF) pdf.draw();
+        if(gui.viewPDF) pdfArray[pdfArrayIndex].draw();//pdf.draw();
         drawPlotterInformation();
         drawStorage();
-        drawText("grayscale image of people from camera");
+        drawText("grayscale image of simple figure");
         ofPopMatrix();
         
         
@@ -593,7 +656,9 @@ private:
                 ofColor c = pixels.getColor(x,y);
                 if(c.r > gui.convertMax) c = ofColor::white;
                 if(c.r < gui.convertMin) c = ofColor::black;
-                pixels.setColor(x,y,c);
+                const ofColor _c = ofColor(c.r, c.g, c.b, 255);
+                //cout << pixels.getPixelsFormat() << endl;;
+                pixels.setColor(x,y,_c);
             }
         }
         grayIronFilingsImage.setFromPixels(pixels);
@@ -1434,9 +1499,9 @@ private:
         }else if(STEP == 6){ // move on outline of the figure
             
             const ofVec2f nowPosition = plotterPosition;
-            const ofVec2f nextPosition = pdf.getVerticesAt();
+            const ofVec2f nextPosition = pdfArray[pdfArrayIndex].getVerticesAt();//pdf.getVerticesAt();
             
-            int motion = pdf.updatePosition(); //motion 0:nothing 1:up 2:down
+            int motion = pdfArray[pdfArrayIndex].updatePosition();//pdf.updatePosition(); //motion 0:nothing 1:up 2:down
             
             if(motion == 1){
                 plotterUp = true;
@@ -1451,13 +1516,18 @@ private:
             timeManager.start(dist/UNIT_DISRANCE_PER_SECOND);
             plotterPosition = nextPosition;
             
-            if(pdf.getFinished()){
+            if(pdfArray[pdfArrayIndex].getFinished()){
                 isManageStorageMode = false;
                 STEP = 0;
                 LOOP_COUNTER++;
                 moveToSecond = nextPosition;
                 plotterPosition = ofVec2f(ofRandom(minX, maxX), ofRandom(minY, maxY));
-                pdf.resetCount();
+                pdfArray[pdfArrayIndex].resetCount();
+                
+                if(LOOP_COUNTER >= gui.LOOP_COUNTER_MAX){
+                    changeTargetImage();
+                    LOOP_COUNTER = 0;
+                }
             }
         }
         
@@ -1770,6 +1840,15 @@ private:
         
     }
     //--------------------------------------------------------------
+    void changeTargetImage(){
+        peopleTestImageArrayIndex = (peopleTestImageArrayIndex+1)%peopleTestImageArray.size();
+        colorPeopleImage = peopleTestImageArray[peopleTestImageArrayIndex];
+        ofSleepMillis(500);
+        pdfArrayIndex = (pdfArrayIndex+1)%pdfArray.size();
+        //pdf = pdfArray[pdfArrayIndex];
+
+    }
+    //--------------------------------------------------------------
 public:
     ComputerVision(){
         init();
@@ -1812,6 +1891,10 @@ public:
         if(key == 'a') isCalibrationMode = !isCalibrationMode;
         
         if(key == 'g') gui.setIsDraw();
+        
+        if(key == ' '){
+            changeTargetImage();
+        }
         
     }
     //--------------------------------------------------------------
